@@ -3,6 +3,7 @@
 //             OPA program C++ version 1.0				   //
 /***********************************************************/
 /***********************************************************/
+// Compilation: g++ -lgsl -lgslcblas -lfftw3 OPAv3.cpp
 
 #include <cstdio>
 #include <cmath>
@@ -20,6 +21,7 @@
 #include "utils.cpp"
 //#include <stdio.h>
 #include <iomanip>
+#include <fftw3.h>
 
 using namespace std;
 using std::vector;
@@ -29,9 +31,16 @@ typedef vector<double>* vektor;
 typedef const double cdouble;
 
 cdouble tPi = 2*4*atan(1);
+cdouble small = 1e-20;
 double thdeg, nOrdPum;
 int cCryst, nt;
 int warned = 0;
+double *pLambdaj, *iLambdaj, *sLambdaj, *t;
+double pLam1, pLam2, sLam1, sLam2, iLam1, iLam2;
+double dtps, tlead;
+//fftw_complex *timeProfile;
+dcomplex *timeProfile;
+double *absTP;
 
 int main(int argc, char *argv[]) {
 
@@ -48,7 +57,7 @@ int main(int argc, char *argv[]) {
 	int cryst1, cryst2, cryst3;
 	int sProf, pProf, iProf;
 	int noStep, noStep1, noStep2, noStep3;
-	int ppm, frame;
+	int ppm, frame, chirpType;
 	string version;
 
 	double *nPumj, *nSigj, *nIdlj, *phiPumj, *phiSigj, *phiIdlj, *temp;
@@ -56,9 +65,8 @@ int main(int argc, char *argv[]) {
 	double thdeg1, thdeg2, thdeg3, nColl_deg, gamma_rad; //tanThetaSq;
 	double crysLth, crysLth1, crysLth2, crysLth3, dzcm;
 	double pLambda_nm, sLambda_nm, iLambda_nm;
-	double pLam1, pLam2, sLam1, sLam2, iLam1, iLam2;
 	double pEJ, pEJ1, pEJ2, pEJ3, sEJ, sEJ1, iEJ, iEJ1;
-	double sigTra12, sigTra23, dtps, tlead;
+	double sigTra12, sigTra23;
 	double dtPumpL, dtPumpL1, dtPumpL2, dtPumpL3;
 	double dtPumpT, dtPumpT1, dtPumpT2, dtPumpT3;
 	double dtSigL, dtSigL1, dtIdlL, dtIdlL1; 
@@ -70,28 +78,28 @@ int main(int argc, char *argv[]) {
 	double kSig, kIdl, kPum, knSig, knIdl, knPum, dk, dk_grid;
 	double cohLength, dw, tWin;
 	double kvPumj, kvSigj, kvIdlj;
-	double *pLambdaj, *iLambdaj, *sLambdaj;
 	double phasVelPum, phasVelSig, phasVelIdl;
 	double phasdtPum, phasdtSig, phasdtIdl;
 	double gVelPum, gVelSig, gVelIdl, gtdPum, gtdSig, gtdIdl;
 	double grDelPumSig, grDelPumIdl, grDelSigIdl;
 	double pa, pb, pc, pd, pu, pw, puw, pAng;
-	double dphm;
+	double dphm, chp1, chp2, chp3;
+	double fwp, fwi, fws;
 	
 	vektor pars;
-	vektor t;
 	dcomplex c1,ci;
 	dcomplex cPhMisM;
 	dcomplex *cPhiPumj, *cPhiSigj, *cPhiIdlj;
-	
+	dcomplex *cSig, *cPum, *cIdl;
+
 // Giving values to some variables & constants
 
 	version = "1.0";
-	noParm_def = 45; // Number of parameters
+	noParm_def = 49; // Number of parameters
 	c1 = (1,0); ci = (0,1);
 	
 	cout << "OPA program version " << version << endl;
-/***********************************************************************/
+/*=====================================================================*/
 // In absence of argument, using default input.txt input file.
 	if(argc==1){
 		cout << "No input argument, using default 'input.txt'" << endl;
@@ -101,7 +109,7 @@ int main(int argc, char *argv[]) {
 		cout << "Input file given in argument -" << argv[1] << "- is used." << endl;
 		fname = argv[1];
 	}
-/***********************************************************************/
+/*=====================================================================*/
 // Reading parameters from input file.
 	pars = new vector<double>();
 	openfile(fname, pars);
@@ -152,10 +160,14 @@ int main(int argc, char *argv[]) {
 	Xcm2_2 = pars->at(42);
 	Xcm2_3 = pars->at(43);
 	frame = (int) pars->at(44);
-/***********************************************************************/
+	chirpType = (int) pars->at(45);
+	chp1 = pars->at(46);
+	chp2 = pars->at(47);
+	chp3 = pars->at(48);
+/*=====================================================================*/
 // Memory allocation
 	cout << "Allocating memory...";
-	t = new vector<double>();
+	t = new double[nt];
 	nPumj = new double[nt];
 	nSigj = new double[nt];
 	nIdlj = new double[nt];
@@ -169,13 +181,27 @@ int main(int argc, char *argv[]) {
 	pLambdaj = new double[nt];
 	sLambdaj = new double[nt];
 	iLambdaj = new double[nt];
+	cSig = new dcomplex[nt];
+	cPum = new dcomplex[nt];
+	cIdl = new dcomplex[nt];
+	//timeProfile = (fftw_complex*)fftw_malloc(sizeof(fftw_complex)*nt);
+	timeProfile = new dcomplex[nt];
+	absTP = new double[nt];
 	cout << "Done!" << endl;
-/***********************************************************************/
-// Construct time array.
-	for (i=1;i<(ndim+1);i++) {
-		t->push_back(i*dtps-tlead);
+/*=====================================================================*/
+// Cleaning up old files
+	ifstream ifile("phase_sig.dat");
+	if (ifile) {
+		if (remove("phase_sig.dat")!=0)
+			errorhl(8);
 	}
-/***********************************************************************/
+/*=====================================================================*/
+// Construct time array.
+	//for (i=1;i<(ndim+1);i++) {
+	for (i=0;i<nt;i++) {
+		t[i]=i*dtps-tlead;
+	}
+/*=====================================================================*/
 // Set up stage parameters.
 	for (cStage=1;cStage<=nStage;cStage++) {
 		warned = 0;
@@ -218,7 +244,7 @@ int main(int argc, char *argv[]) {
 			pEJ = pEJ3;
 			Xcm2 = Xcm2_3;
 		}
-/***********************************************************************/
+/*=====================================================================*/
 	// Time window
 		tWin = dtps*nt;
 	// Distance step
@@ -234,7 +260,7 @@ int main(int argc, char *argv[]) {
 		nOrdIdl = calcRefInd(cCryst, iLambda_nm, 3);
 		nOrdPum = calcRefInd(cCryst, pLambda_nm, 2);
 		nExPum = calcRefInd(cCryst, pLambda_nm, 1);
-/***********************************************************************/
+/*=====================================================================*/
 // Calculate phase matching
 		cout << "\tn_o Signal\t" << "n_o Idler\t" << "n_o Pump\t" << "n_e Pump" << endl;
 		cout << "\t" << nOrdSig << "\t\t" << nOrdIdl << "\t\t" << nOrdPum << "\t\t" << nExPum << endl;
@@ -269,7 +295,7 @@ int main(int argc, char *argv[]) {
 		}
 		cPhMisM = exp(ci*dk*dzcm/2e4);
 		// here could end the scan loop
-/***********************************************************************/
+/*=====================================================================*/
 	// Wavelength scan limits
 		dw = tPi*1e-3/tWin; // 1/fs
 		pLam1 = tPi*c*1e-6/(omegaPum0+nt/2*dw);  // nm
@@ -282,7 +308,7 @@ int main(int argc, char *argv[]) {
 		cout << "\tSignal\t" << "\t\tPump\t" << "\t\tIdler\t" << endl;
 		cout << "Scan wavelengths:" << endl;
 		cout << "   " << sLam1 << " " << sLam2 << "\t  " << pLam1 << " " << pLam2 << "\t  " << iLam1 << " " << iLam2 << "\t nm " << endl;
-/***********************************************************************/
+/*=====================================================================*/
 	// Calculating angular wavenumbers and phases for all the wavelengths in this range.
 		dk_grid = 1e9*dw/c; // in microns
 		for (j=0;j<nt;j++) {
@@ -304,7 +330,7 @@ int main(int argc, char *argv[]) {
 				phiIdlj[j] = -kvIdlj*dzcm*nIdlj[j]*cos(asin(gamsij));
 			else phiIdlj[j] = 0;
 		}
-/***********************************************************************/
+/*=====================================================================*/
 /*	// FIX: Reverse again idler indeces??? Ebbe belenezni jobban
 		for (j=0;j<nt;j++) {
 			temp[j] = phiIdlj[nt-1-j];
@@ -318,7 +344,7 @@ int main(int argc, char *argv[]) {
 		for (j=0;j<nt;j++) {
 			nIdlj[j] = temp[j];
 		}*/
-/***********************************************************************/
+/*=====================================================================*/
 	// Phase velocities
 		phasVelPum = c*1e2/nPumj[nt/2]; // cm/sec
 		phasVelSig = c*1e2/nSigj[nt/2];
@@ -366,7 +392,7 @@ int main(int argc, char *argv[]) {
 		cout << " Phase matching angle: " << pAng << endl;
 		cout << " Angle of propagation: " << thdeg << endl;
 		cout << " Coherence length: " << cohLength << " um" << endl;
-/***********************************************************************/
+/*=====================================================================*/
 	// Calculate at which angle k vector triangle closes properly	
 		if (nColl_deg!=0) {
 			cout << "Non collinear geometry" << endl;
@@ -401,7 +427,7 @@ int main(int argc, char *argv[]) {
 		}
 		else cout << "Collinear geometry" << endl;
 		if (mode!=1) exit(0);
-/***********************************************************************/
+/*=====================================================================*/
 	// Local time frame selection
 	// negative sign because of: gtd = -d(phi)/domega to ensure spatial phase of form exp(-ikz)
 		if (frame==1) 
@@ -420,8 +446,36 @@ int main(int argc, char *argv[]) {
 			cPhiSigj[j] = exp(ci*phiSigj[j]);
 			cPhiIdlj[j] = exp(ci*phiIdlj[j]);
 		}
+/*=====================================================================*/
+		cPum = 0;
+		if (cStage==1) {
+			cSig = 0;
+			cIdl = 0;
+		}
+/*=====================================================================*/
+	// Create pulses
+	cout << "Creating pulses..." << endl;
+	// PUMP
+		if (pEJ!=0) {
+			cout << "Pump:" << endl;
+			if (pProf<0) errorhl(10);
+			fwp = 0.5*c*eps0*(nOrdPum*coePum)*Xcm2; // Check units if sg is wrong
+			GenProfile(pProf, dtPumpL, dtPumpT, Xcm2, pEJ, fwp);
+		}
+		if (cStage==1) {
+			cout << "Signal:" << endl;
+			fws = 0.5*c*eps0*(nOrdSig)*Xcm2; // Check units if sg is wrong
+			GenProfile(sProf, dtSigL, dtSigT, Xcm2, sEJ, fws);
+		}
+		else // ide jon majd a signal ujrahasznositasa
+		{}
+		
+		
+		
+		
+	// Writing data to file
 		writeToFile("phase_sig.dat", sLambdaj, phiSigj);
-
+		
 	
 	
 	
