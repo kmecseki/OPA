@@ -26,24 +26,24 @@
 using namespace std;
 using std::vector;
 
-typedef complex<double> dcomplex;
-typedef vector<double>* vektor;
-typedef const double cdouble;
+typedef complex<long double> dcomplex;
+typedef vector<long double>* vektor;
+typedef const long double cdouble;
 
 cdouble tPi = 2*4*atan(1);
 cdouble small = 1e-20;
-double thdeg, nOrdPum;
+long double thdeg, nOrdPum;
 int cCryst, nt;
 int warned = 0;
 int chirpType;
-double *pLambdaj, *iLambdaj, *sLambdaj, *t;
-double pLam1, pLam2, sLam1, sLam2, iLam1, iLam2;
-double dtps, tlead, dw;	
-double alps, alpi, alpp;
-double pLambda_nm, sLambda_nm, iLambda_nm;
+long double *pLambdaj, *iLambdaj, *sLambdaj, *t;
+long double pLam1, pLam2, sLam1, sLam2, iLam1, iLam2;
+long double dtps, tlead, dw;	
+long double alps, alpi, alpp;
+long double pLambda_nm, sLambda_nm, iLambda_nm;
 dcomplex *timeProfSig, *timeProfIdl, *timeProfPum;
-double *absTP, dk, dzcm;
-double Xcm2;
+long double *absTP, dk, dzcm;
+long double Xcm2;
 fftw_plan p;
 dcomplex c1(1,0),ci(0,1);
 cdouble c = 2.997925000000e8;//299792458;
@@ -65,44 +65,44 @@ int main(int argc, char *argv[]) {
 	int ppm, frame;
 	string version;
 
-	double *nPumj, *nSigj, *nIdlj, *phiPumj, *phiSigj, *phiIdlj, *temp;
-	double xeff, gamsij;
-	double thdeg1, thdeg2, thdeg3, nColl_deg, gamma_rad; //tanThetaSq;
-	double crysLth, crysLth1, crysLth2, crysLth3;
-	double pEJ, pEJ1, pEJ2, pEJ3, sEJ, sEJ1, iEJ, iEJ1;
-	double sigTra12, sigTra23;
-	double dtPumpL, dtPumpL1, dtPumpL2, dtPumpL3;
-	double dtPumpT, dtPumpT1, dtPumpT2, dtPumpT3;
-	double dtSigL, dtSigL1, dtIdlL, dtIdlL1; 
-	double dtSigT, dtSigT1, dtIdlT, dtIdlT1;
-	double Xcm2_1, Xcm2_2, Xcm2_3;
-	double nOrdSig, nOrdIdl, nExPum, coePum, nonePum;
-	double nOrdSigj, nOrdIdlj, coePumj; //nOrdPumj, nExPumj, nonePumj;
-	double kSig, kIdl, kPum, knSig, knIdl, knPum, dk_grid;
-	double cohLength, tWin;
-	double kvPumj, kvSigj, kvIdlj;
-	double phasVelPum, phasVelSig, phasVelIdl;
-	double phasdtPum, phasdtSig, phasdtIdl;
-	double gVelPum, gVelSig, gVelIdl, gtdPum, gtdSig, gtdIdl;
-	double grDelPumSig, grDelPumIdl, grDelSigIdl;
-	double pa, pb, pc, pd, pu, pw, puw, pAng;
-	double omegaSig0, omegaPum0, omegaIdl0;
-	double dphm;
-	double fwp, fwi, fws;
-	double tcPum, tcSig, tcIdl;
-	double chpSig, chpPum, chpIdl, chpSig23;
-	double chpSig2, chpPum2, chpIdl2, chpSig223;
-	double chpSigL, chpPumL, chpIdlL, chpSigNL, chpPumNL, chpIdlNL;
-	double phiP, phiS, phiI;
+	long double *nPumj, *nSigj, *nIdlj, *phiPumj, *phiSigj, *phiIdlj, *temp;
+	long double xeff, gamsij;
+	long double thdeg1, thdeg2, thdeg3, nColl_deg, gamma_rad; //tanThetaSq;
+	long double crysLth, crysLth1, crysLth2, crysLth3;
+	long double pEJ, pEJ1, pEJ2, pEJ3, sEJ, sEJ1, iEJ, iEJ1;
+	long double sigTra12, sigTra23;
+	long double dtPumpL, dtPumpL1, dtPumpL2, dtPumpL3;
+	long double dtPumpT, dtPumpT1, dtPumpT2, dtPumpT3;
+	long double dtSigL, dtSigL1, dtIdlL, dtIdlL1; 
+	long double dtSigT, dtSigT1, dtIdlT, dtIdlT1;
+	long double Xcm2_1, Xcm2_2, Xcm2_3;
+	long double nOrdSig, nOrdIdl, nExPum, coePum, nonePum;
+	long double nOrdSigj, nOrdIdlj, coePumj; //nOrdPumj, nExPumj, nonePumj;
+	long double kSig, kIdl, kPum, knSig, knIdl, knPum, dk_grid;
+	long double cohLength, tWin;
+	long double kvPumj, kvSigj, kvIdlj;
+	long double phasVelPum, phasVelSig, phasVelIdl;
+	long double phasdtPum, phasdtSig, phasdtIdl;
+	long double gVelPum, gVelSig, gVelIdl, gtdPum, gtdSig, gtdIdl;
+	long double grDelPumSig, grDelPumIdl, grDelSigIdl;
+	long double pa, pb, pc, pd, pu, pw, puw, pAng;
+	long double omegaSig0, omegaPum0, omegaIdl0;
+	long double dphm;
+	long double fwp, fwi, fws;
+	long double tcPum, tcSig, tcIdl;
+	long double chpSig, chpPum, chpIdl, chpSig23;
+	long double chpSig2, chpPum2, chpIdl2, chpSig223;
+	long double chpSigL, chpPumL, chpIdlL, chpSigNL, chpPumNL, chpIdlNL;
+	long double phiP, phiS, phiI;
 	
 	vektor pars;
 	dcomplex cPhMisM;
 	dcomplex *cPhiPumj, *cPhiSigj, *cPhiIdlj;
 	dcomplex *cSig, *cPum, *cIdl;
 	
-	extern double FindMax(double*,int);
-	extern int spectrum(complex<double>*,double*,const char*,int);
-	extern int OPA(complex<double>*,complex<double>*,complex<double>*,int,int,double,double,double,int,int,int,int,complex<double>*,complex<double>*,complex<double>*);
+	extern long double FindMax(long double*,int);
+	extern int spectrum(complex<long double>*,long double*,const char*,int);
+	extern int OPA(complex<long double>*,complex<long double>*,complex<long double>*,int,int,long double,long double,long double,int,int,int,int,complex<long double>*,complex<long double>*,complex<long double>*);
 /*=====================================================================*/
 // Giving values to some variables & constants
 
@@ -122,7 +122,7 @@ int main(int argc, char *argv[]) {
 	}
 /*=====================================================================*/
 // Reading parameters from input file.
-	pars = new vector<double>();
+	pars = new vector<long double>();
 	openfile(fname, pars);
 	int o=0;
 	cout << "Read/Required parameters from file: " << pars->size() << "/" << noParm_def << endl;
@@ -196,27 +196,27 @@ int main(int argc, char *argv[]) {
 /*=====================================================================*/
 // Memory allocation
 	cout << "Allocating memory...";
-	t = new double[nt];
-	nPumj = new double[nt];
-	nSigj = new double[nt];
-	nIdlj = new double[nt];
-	phiPumj = new double[nt];
-	phiSigj = new double[nt];
-	phiIdlj = new double[nt];
-	temp = new double[nt];
+	t = new long double[nt];
+	nPumj = new long double[nt];
+	nSigj = new long double[nt];
+	nIdlj = new long double[nt];
+	phiPumj = new long double[nt];
+	phiSigj = new long double[nt];
+	phiIdlj = new long double[nt];
+	temp = new long double[nt];
 	cPhiPumj = new dcomplex[nt];
 	cPhiSigj = new dcomplex[nt];
 	cPhiIdlj = new dcomplex[nt];
-	pLambdaj = new double[nt];
-	sLambdaj = new double[nt];
-	iLambdaj = new double[nt];
+	pLambdaj = new long double[nt];
+	sLambdaj = new long double[nt];
+	iLambdaj = new long double[nt];
 	cSig = new dcomplex[nt];
 	cPum = new dcomplex[nt];
 	cIdl = new dcomplex[nt];
 	timeProfSig = new dcomplex[nt];
 	timeProfPum = new dcomplex[nt];
 	timeProfIdl = new dcomplex[nt];
-	absTP = new double[nt];
+	absTP = new long double[nt];
 	cout << "Done!" << endl;
 /*=====================================================================*/
 // Cleaning up old files
@@ -278,9 +278,9 @@ int main(int argc, char *argv[]) {
 	// Time window
 		tWin = dtps*nt;
 	// Distance step
-		dzcm = crysLth/((double) noStep);
+		dzcm = crysLth/((long double) noStep);
 	// Calculate idler wavelength
-		/*double freqp, freqs, freqd; // needed for same result
+		/*long double freqp, freqs, freqd; // needed for same result
 		freqp = c*1e6/(1e-3*pLambda_nm);
 		freqs = c*1e6/(1e-3*sLambda_nm);
 		freqd = freqp-freqs;
@@ -447,7 +447,7 @@ int main(int argc, char *argv[]) {
 	// Calculate at which angle k vector triangle closes properly	
 		if (nColl_deg!=0) {
 			cout << "Non collinear geometry" << endl;
-			double z, alp;
+			long double z, alp;
 			z = (pow(knPum,2)-pow(kIdl,2)+pow(kSig,2))/(2*knPum*kSig);
 			if (z<=1) {
 				alp = rad2deg(acos(z));
@@ -461,7 +461,7 @@ int main(int argc, char *argv[]) {
 			if (gVelSig/gVelIdl>=1) 
 				cout << "No bandwidth optimised alpha exists" << endl;
 			else {
-				double beta2, alpha2, alpha3, nPumOpt, theOpt;
+				long double beta2, alpha2, alpha3, nPumOpt, theOpt;
 				beta2 = acos(gVelSig/gVelIdl);
 			// From Ross(16) - good approx to the optimal noncoll angle, it will
 			// coincide with alpha at optimal phase matching
@@ -488,9 +488,9 @@ int main(int argc, char *argv[]) {
 		else if (frame==3) 
 			dphm = -dw*gtdPum;
 		else errorhl(6);
-		double phiPumjh = phiPumj[nt/2];
-		double phiSigjh = phiSigj[nt/2];
-		double phiIdljh = phiIdlj[nt/2];
+		long double phiPumjh = phiPumj[nt/2];
+		long double phiSigjh = phiSigj[nt/2];
+		long double phiIdljh = phiIdlj[nt/2];
 	// Remove central phases and phase gradients
 		for (j=0;j<nt;j++) {
 			phiPumj[j] = phiPumj[j]*1e4 - (j-nt/2)*dphm*1e3 - phiPumjh*1e4;
@@ -532,7 +532,7 @@ int main(int argc, char *argv[]) {
 			GenProfile(timeProfSig, sProf, dtSigL, dtSigT, Xcm2, sEJ, fws, tcSig, chpSig, chpSig2, chpSigL, chpSigNL);
 		}
 //		cout << timeProfPum[nt/2];
-//		double* ji = new double[nt];
+//		long double* ji = new long double[nt];
 //		for (j=0;j<nt;j++) {
 //			phiPumj[j] = real(timeProfPum[j]);
 //			ji[j] = j;
@@ -586,13 +586,13 @@ int main(int argc, char *argv[]) {
 	// Also assuming flat top spatial and temporal profiles + no pump depletion
 		if (pEJ!=0) {
 			cout << "Gain predictions" << endl;
-			double eFieldMaxPum;
-			double q1, q2, p1, p2;
-			double kvSig, kvIdl, kvPum;
-			double dkdzh, sina, cosa, bdz, bl;
-			double fdkb, phpk, sxpk, *temp;
-			complex<double> csx;
-			temp = new double[nt];
+			long double eFieldMaxPum;
+			long double q1, q2, p1, p2;
+			long double kvSig, kvIdl, kvPum;
+			long double dkdzh, sina, cosa, bdz, bl;
+			long double fdkb, phpk, sxpk, *temp;
+			complex<long double> csx;
+			temp = new long double[nt];
 			kvSig = tPi*1e7/sLambda_nm; // 1/cm
 			kvPum = tPi*1e7/pLambda_nm; // 1/cm
 			kvIdl = tPi*1e7/iLambda_nm; // 1/cm
@@ -613,7 +613,7 @@ int main(int argc, char *argv[]) {
 			fdkb = dkdzh/bdz;
 			if(q1<q2) {
 				cout << "Hyperbolic case" << endl;
-				double chbl, shbl;
+				long double chbl, shbl;
 				chbl = cosh(bl);
 				shbl = sinh(bl);
 				p1 = (bl*sina*chbl-(dk*crysLth*0.5)*cosa*shbl);
@@ -625,7 +625,7 @@ int main(int argc, char *argv[]) {
 			}
 			else {
 				cout << "Trigonometric case" << endl;
-				double cosbl, sinbl;
+				long double cosbl, sinbl;
 				cosbl = cos(bl);
 				sinbl = sin(bl);
 				p1 = (bl*sina*cosbl-(dk*crysLth*0.5)*cosa*sinbl);
@@ -638,7 +638,7 @@ int main(int argc, char *argv[]) {
 			// sxpk lehet a gain es phpk a fazis
 		}
 		else
-			double sxpk = 0;
+			long double sxpk = 0;
 /*=====================================================================*/
 	// Applying initial phase
 		if (cStage==1) {
@@ -657,8 +657,8 @@ int main(int argc, char *argv[]) {
 		spectrum(timeProfIdl, iLambdaj, "spec_idl.dat", iProf);
 /*=====================================================================*/
 	// OPA
-	//double* ggg;
-	//ggg = new double[nt];
+	//long double* ggg;
+	//ggg = new long double[nt];
 
 	//for (j=0;j<nt;j++) {
 	//	ggg[j] = j;
