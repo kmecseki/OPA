@@ -5,23 +5,31 @@
 /***********************************************************/
 // Compilation: g++ -lgsl -lgslcblas -lfftw3 OPAv6.cpp
 
-#include <cstdio>
 #include <cmath>
+
+
+
+
+
+#include <cstdio>
 #include <complex>
-//#include <stdlib.h>
 #include <cstring>
-//#include <unistd.h>
-//#include <fftw.h>
 #include <fstream>
 #include <iostream>
-//#include <string>
 #include <vector>
-//#include <sstream>
-//#include "init.h"
 #include "utils.cpp"
-//#include <stdio.h>
 #include <iomanip>
 #include <fftw3.h>
+
+
+//#include <stdlib.h>
+//#include <unistd.h>
+//#include <fftw.h>
+//#include <string>
+//#include <sstream>
+//#include "init.h"
+//#include <stdio.h>
+
 
 using namespace std;
 using std::vector;
@@ -30,8 +38,7 @@ typedef complex<double> dcomplex;
 typedef vector<double>* vektor;
 typedef const double cdouble;
 
-cdouble tPi = 2*4*atan(1);
-cdouble small = 1e-20;
+
 double thdeg, nOrdPum;
 int cCryst, nt;
 int warned = 0;
@@ -46,17 +53,19 @@ double *absTP, dk, dzcm;
 double Xcm2;
 fftw_plan p;
 dcomplex c1(1,0),ci(0,1);
-cdouble c = 2.997925000000e8;//299792458;
+
 
 int main(int argc, char *argv[]) {
 
-// Initialising
 
-	const char *fname;
-	const int ndim = 524288;
-	cdouble eps0 = 8.854e-12;//8.85418782e-12;
-	cdouble hpl = 6.6256e-34;//6.626068e-34;
-	cdouble hce0=0.5*c*eps0;
+
+
+
+
+
+
+
+
 	int noParm_def, i, j, mode;
 	int cStage, nStage;
 	int cryst1, cryst2, cryst3;
@@ -107,93 +116,12 @@ int main(int argc, char *argv[]) {
 /*=====================================================================*/
 // Giving values to some variables & constants
 
-	version = "1.0";
+
 	noParm_def = 66; // Number of parameters
 	
-	cout << "OPA program version " << version << endl;
+	
 /*=====================================================================*/
-// In absence of argument, using default input.txt input file.
-	if(argc==1){
-		cout << "No input argument, using default 'input.txt'" << endl;
-		fname = "input.txt";
-	}
-	else {
-		cout << "Input file given in argument -" << argv[1] << "- is used." << endl;
-		fname = argv[1];
-	}
-/*=====================================================================*/
-// Reading parameters from input file.
-	pars = new vector<double>();
-	openfile(fname, pars);
-	int o=0;
-	cout << "Read/Required parameters from file: " << pars->size() << "/" << noParm_def << endl;
-	if(pars->size()!=noParm_def) errorhl(2);
-	mode = (int) pars->at(o++);
-	nStage = (int) pars->at(o++);
-	cryst1 = (int) pars->at(o++);
-	cryst2 = (int) pars->at(o++);
-	cryst3 = (int) pars->at(o++);
-	crysLth1 = pars->at(o++);
-	crysLth2 = pars->at(o++);
-	crysLth3 = pars->at(o++);
-	thdeg1 = pars->at(o++);
-	thdeg2 = pars->at(o++);
-	thdeg3 = pars->at(o++);
-	nColl_deg = pars->at(o++);
-	ppm = pars->at(o++);
-	pLambda_nm = pars->at(o++);
-	sLambda_nm = pars->at(o++);
-	pEJ1 = pars->at(o++);
-	pEJ2 = pars->at(o++);
-	pEJ3 = pars->at(o++);
-	sEJ1 = pars->at(o++);
-	sigTra12 = pars->at(o++);
-	sigTra23 = pars->at(o++);
-	iEJ1 = pars->at(o++);
-	sProf = (int) pars->at(o++);
-	pProf = (int) pars->at(o++);
-	iProf = (int) pars->at(o++);
-	tlead = pars->at(o++);
-	dtps = pars->at(o++);
-	nt = (int) pars->at(o++);
-	noStep1 = (int) pars->at(o++);
-	noStep2 = (int) pars->at(o++);
-	noStep3 = (int) pars->at(o++);
-	dtPumpL1 = pars->at(o++);
-	dtPumpL2 = pars->at(o++);
-	dtPumpL3 = pars->at(o++);
-	dtPumpT1 = pars->at(o++);
-	dtPumpT2 = pars->at(o++);
-	dtPumpT3 = pars->at(o++);
-	dtSigL1 = pars->at(o++);
-	dtIdlL1 = pars->at(o++);
-	dtSigT1 = pars->at(o++);
-	dtIdlT1 = pars->at(o++);
-	Xcm2_1 = pars->at(o++);
-	Xcm2_2 = pars->at(o++);
-	Xcm2_3 = pars->at(o++);
-	frame = (int) pars->at(o++);
-	chirpType = (int) pars->at(o++);
-	chpSig = pars->at(o++);
-	chpPum = pars->at(o++);
-	chpIdl = pars->at(o++);
-	chpSig23 = pars->at(o++);
-	chpSig2 = pars->at(o++);
-	chpPum2 = pars->at(o++);
-	chpIdl2 = pars->at(o++);
-	chpSig223 = pars->at(o++);
-	chpSigL = pars->at(o++);
-	chpPumL = pars->at(o++);
-	chpIdlL = pars->at(o++);
-	chpSigNL = pars->at(o++);
-	chpPumNL = pars->at(o++);
-	chpIdlNL = pars->at(o++);
-	tcPum = pars->at(o++);
-	tcSig = pars->at(o++);
-	tcIdl = pars->at(o++);
-	phiP = pars->at(o++);
-	phiS = pars->at(o++);
-	phiI = pars->at(o++);
+
 /*=====================================================================*/
 // Memory allocation
 	cout << "Allocating memory...";
@@ -220,11 +148,20 @@ int main(int argc, char *argv[]) {
 	absTP = new double[nt];
 	cout << "Done!" << endl;
 /*=====================================================================*/
-// Construct time array.
-	//for (i=1;i<(ndim+1);i++) {
-	for (i=0;i<nt;i++) {
-		t[i]=i*dtps-tlead;
-	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+itt
 /*=====================================================================*/
 // Set up stage parameters.
 	for (cStage=1;cStage<=nStage;cStage++) {

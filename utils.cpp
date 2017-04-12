@@ -86,28 +86,19 @@ int warninghl(int w) {
 	}
 }
 /*=====================================================================*/
-int openfile(const char *fname, vector<double>* vekto) {
-// This opens a file, and reads contents into 
-// vector, with number of elements rows.
-	double number;
-	char delim = '/';
-	ifstream filestr;
-	string line;
-	filestr.open (fname, fstream::in);
-	if(filestr.is_open()) {
-		while(!filestr.eof()) {
-			getline(filestr,line,delim);
-			stringstream input(line);
-			while(input >> number) {
-				vekto->push_back(number);
-			}
-		}
-	}
-	else {
-		errorhl(1);
-	}
-	filestr.close();
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
 /*=====================================================================*/
 int writeToFile(const char *ofname, double *data1, double *data2) {
 // Opens a file with name ofname, and outputs real data

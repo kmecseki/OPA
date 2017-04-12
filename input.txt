@@ -1,0 +1,26 @@
+1				   / Run mode, 1 = normal, 2 = scan, 3 = pm check/
+1                  / Number of stages/
+2 2 2              / Crystal types at stages 1=BBO, 2=LBO, 3=KDP/
+0.7 0.5 0.7        / Crystal lengths (cm)/
+14.0 14.0 14.0     / Theta(deg) My application: BBO:24.01, LBO:14.0/
+1.35               / Non-collinear angle (deg) My app: BBO:2.41, LBO:1.35/ 
+0				   / Perfect phase matching on = 1, off = 0/
+526.5000 780.0000000         / Pump & Signal central wavelengths in nm/
+15e-3 15e-3 0e-3     / Pump energy in J, transmissions to stage 2 & 3/
+1e-3 1 1 0         / Signal energy in J, transmissions to stage 2 & 3, idler E inJ/
+1 1 1              / Profiles S-P-I, 1 = Gau, 2 = Sech, 0 = File (only for signal)/
+65.536 0.002 65536 / Pump place in time, time grid and number of gridpoints/
+100 100 100        / Number of steps in crystals/
+5 5 5              / Pump leading edge in ps, in stage 1-2-3/
+5 5 5              / Pump trailing edge in ps, in stage 1-2-3/
+0.01 0.01          / Signal & idler leading edge in ps in stage 1/
+0.01 0.01          / Signal & idler trailing edge in ps in stage 1/
+0.012 0.012 0.03   / Beam areas stage 1-2-3 cm2/
+3				   / Local time frame, 1 = signal, 2 = mean, 3 = pump/
+1       		   / Dispersion option (1 = normal, 2 = direct)/
+0 0 0 0 		   / Dispersion values (for option normal in fs2),S-P-I, chirp between stages 2-3 for signal/
+0 0 0 0			   / Non-linear dispersion values, for normal chirp, S-P-I, fs3, last one is for st 2-3/
+0 0 0 			   / Dispersion values for direct chirp S-P-I GHz per ps/
+0 0 0			   / Non-linear dispersion values, direct chirp, S-P-I, Ghz/ps/ps/
+0 0 0 			   / Coherence times, for noisy pulses (not background noise) 1-Pump, 2-Signal, 3-Idler/
+0 0 0              / Phases S-P-I
