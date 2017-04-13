@@ -17,7 +17,6 @@ int main(int argc, char *argv[]) {
     std::string version = "6.0";
     std::cout << "OPA program version " << version << std::endl;
 
-
 	// Physical constants
 	const double eps0 = 8.854e-12; // 8.85418782e-12;
 	const double hpl = 6.6256e-34; // 6.626068e-34;
@@ -43,18 +42,18 @@ int main(int argc, char *argv[]) {
 
     // Read parameters from input file.
     std::cout << "Reading parameters from input file.." << std::endl;
-    std::unique_ptr<std::vector<double>> parsed = std::make_unique<std::vector<double>>(); 
+    std::vector<double> parsed; 
     std::ifstream filestr;
     filestr.open(fname, std::fstream::in);
 	if(filestr.is_open()) {
         char delim = '/';
-        double read_number;
+		double read_number;
         std::string line;
 		while(!filestr.eof()) {
 			std::getline(filestr, line, delim);
 			std::stringstream input(line);
 			while(input >> read_number) {
-				parsed->push_back(read_number);
+				parsed.push_back(read_number);
 			}
 		}
 	}
@@ -65,19 +64,89 @@ int main(int argc, char *argv[]) {
 	filestr.close();
     
     /*=====================================================================*/
-	
+	// Read parameters from pars vector.
+	int o=0;
+	int noParm_def = 66;
+	std::cout << "Reading parameters from vector: " << parsed.size() << std::endl;
+	if(parsed.size()!=noParm_def) {
+		std::cout << "Wrong number of parameters in file." << std::endl;
+		exit(0);
+	}
+	int mode = (int) parsed.at(o++);
+	int nStage = (int) parsed.at(o++);
+	int cryst1 = (int) parsed.at(o++);
+	int cryst2 = (int) parsed.at(o++);
+	int cryst3 = (int) parsed.at(o++);
+	double crysLth1 = parsed.at(o++);
+	double crysLth2 = parsed.at(o++);
+	double crysLth3 = parsed.at(o++);
+	double thdeg1 = parsed.at(o++);
+	double thdeg2 = parsed.at(o++);
+	double thdeg3 = parsed.at(o++);
+	double nColl_deg = parsed.at(o++);
+	double ppm = parsed.at(o++);
+	double pLambda_nm = parsed.at(o++);
+	double sLambda_nm = parsed.at(o++);
+	double pEJ1 = parsed.at(o++);
+	double pEJ2 = parsed.at(o++);
+	double pEJ3 = parsed.at(o++);
+	double sEJ1 = parsed.at(o++);
+	double sigTra12 = parsed.at(o++);
+	double sigTra23 = parsed.at(o++);
+	double iEJ1 = parsed.at(o++);
+	int sProf = (int) parsed.at(o++);
+	int pProf = (int) parsed.at(o++);
+	int iProf = (int) parsed.at(o++);
+	double tlead = parsed.at(o++);
+	double dtps = parsed.at(o++);
+	int nt = (int) parsed.at(o++);
+	int noStep1 = (int) parsed.at(o++);
+	int noStep2 = (int) parsed.at(o++);
+	int noStep3 = (int) parsed.at(o++);
+	double dtPumpL1 = parsed.at(o++);
+	double dtPumpL2 = parsed.at(o++);
+	double dtPumpL3 = parsed.at(o++);
+	double dtPumpT1 = parsed.at(o++);
+	double dtPumpT2 = parsed.at(o++);
+	double dtPumpT3 = parsed.at(o++);
+	double dtSigL1 = parsed.at(o++);
+	double dtIdlL1 = parsed.at(o++);
+	double dtSigT1 = parsed.at(o++);
+	double dtIdlT1 = parsed.at(o++);
+	double Xcm2_1 = parsed.at(o++);
+	double Xcm2_2 = parsed.at(o++);
+	double Xcm2_3 = parsed.at(o++);
+	int frame = (int) parsed.at(o++);
+	int chirpType = (int) parsed.at(o++);
+	double chpSig = parsed.at(o++);
+	double chpPum = parsed.at(o++);
+	double chpIdl = parsed.at(o++);
+	double chpSig23 = parsed.at(o++);
+	double chpSig2 = parsed.at(o++);
+	double chpPum2 = parsed.at(o++);
+	double chpIdl2 = parsed.at(o++);
+	double chpSig223 = parsed.at(o++);
+	double chpSigL = parsed.at(o++);
+	double chpPumL = parsed.at(o++);
+	double chpIdlL = parsed.at(o++);
+	double chpSigNL = parsed.at(o++);
+	double chpPumNL = parsed.at(o++);
+	double chpIdlNL = parsed.at(o++);
+	double tcPum = parsed.at(o++);
+	double tcSig = parsed.at(o++);
+	double tcIdl = parsed.at(o++);
+	double phiP = parsed.at(o++);
+	double phiS = parsed.at(o++);
+	double phiI = parsed.at(o++);
+
+    /*=====================================================================*/
     // Construct time array.
-    double<vector> t(nt);
+    std::vector<double> t(nt);
 	for (int i=0; i<nt ;i++) {
 		t[i] = i * dtps - tlead;
 	}
-    
-    
-    
-	
-	
-	
-	
+
+
 
 }
 
@@ -90,7 +159,7 @@ int main(int argc, char *argv[]) {
 
 
 
-
+/*
 
 
 
@@ -98,75 +167,8 @@ int main(int argc, char *argv[]) {
 
 
     openfile(fname, pars);
-	int o=0;
-	cout << "Read/Required parameters from file: " << pars->size() << "/" << noParm_def << endl;
-	if(pars->size()!=noParm_def) errorhl(2);
-	mode = (int) pars->at(o++);
-	nStage = (int) pars->at(o++);
-	cryst1 = (int) pars->at(o++);
-	cryst2 = (int) pars->at(o++);
-	cryst3 = (int) pars->at(o++);
-	crysLth1 = pars->at(o++);
-	crysLth2 = pars->at(o++);
-	crysLth3 = pars->at(o++);
-	thdeg1 = pars->at(o++);
-	thdeg2 = pars->at(o++);
-	thdeg3 = pars->at(o++);
-	nColl_deg = pars->at(o++);
-	ppm = pars->at(o++);
-	pLambda_nm = pars->at(o++);
-	sLambda_nm = pars->at(o++);
-	pEJ1 = pars->at(o++);
-	pEJ2 = pars->at(o++);
-	pEJ3 = pars->at(o++);
-	sEJ1 = pars->at(o++);
-	sigTra12 = pars->at(o++);
-	sigTra23 = pars->at(o++);
-	iEJ1 = pars->at(o++);
-	sProf = (int) pars->at(o++);
-	pProf = (int) pars->at(o++);
-	iProf = (int) pars->at(o++);
-	tlead = pars->at(o++);
-	dtps = pars->at(o++);
-	nt = (int) pars->at(o++);
-	noStep1 = (int) pars->at(o++);
-	noStep2 = (int) pars->at(o++);
-	noStep3 = (int) pars->at(o++);
-	dtPumpL1 = pars->at(o++);
-	dtPumpL2 = pars->at(o++);
-	dtPumpL3 = pars->at(o++);
-	dtPumpT1 = pars->at(o++);
-	dtPumpT2 = pars->at(o++);
-	dtPumpT3 = pars->at(o++);
-	dtSigL1 = pars->at(o++);
-	dtIdlL1 = pars->at(o++);
-	dtSigT1 = pars->at(o++);
-	dtIdlT1 = pars->at(o++);
-	Xcm2_1 = pars->at(o++);
-	Xcm2_2 = pars->at(o++);
-	Xcm2_3 = pars->at(o++);
-	frame = (int) pars->at(o++);
-	chirpType = (int) pars->at(o++);
-	chpSig = pars->at(o++);
-	chpPum = pars->at(o++);
-	chpIdl = pars->at(o++);
-	chpSig23 = pars->at(o++);
-	chpSig2 = pars->at(o++);
-	chpPum2 = pars->at(o++);
-	chpIdl2 = pars->at(o++);
-	chpSig223 = pars->at(o++);
-	chpSigL = pars->at(o++);
-	chpPumL = pars->at(o++);
-	chpIdlL = pars->at(o++);
-	chpSigNL = pars->at(o++);
-	chpPumNL = pars->at(o++);
-	chpIdlNL = pars->at(o++);
-	tcPum = pars->at(o++);
-	tcSig = pars->at(o++);
-	tcIdl = pars->at(o++);
-	phiP = pars->at(o++);
-	phiS = pars->at(o++);
-	phiI = pars->at(o++);
+	
 }
 
 
+*/
