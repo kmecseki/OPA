@@ -8,6 +8,8 @@
 #include<memory>
 //#include<cstdio>
 
+#include "pulse.h"
+
 
 
 
@@ -148,27 +150,33 @@ int main(int argc, char *argv[]) {
 
 
 
-}
 
+	/*=====================================================================*/
+	// Set up stage parameters.
+	Crystal* stage1 = new Crystal(cryst1, thdeg1, 1, noStep1, crysLth1);
+	Crystal* stage2 = new Crystal(cryst2, thdeg2, 2, noStep2, crysLth2);
+	Crystal* stage3 = new Crystal(cryst3, thdeg3, 3, noStep3, crysLth3);
 
-
-
-
-
-
-
-
-
-/*
-
-
-
-
-
-
-    openfile(fname, pars);
+	/*=====================================================================*/
+	// Create pulses
+	Pulse* Pump1 = new Pulse(dtPumpL1, dtPumpT1, pEJ1, Xcm2_1);
+	Pulse* Signal1 = new Pulse(dtSigL1, dtSigT1, sEJ1, Xcm2_1);
+	Pulse* Idler1 = new Pulse(dtIdlL1, dtIdlT1, iEJ1, Xcm2_1);
 	
+	Pulse* Pump2 = new Pulse(dtPumpL2, dtPumpT2, pEJ2, Xcm2_2);
+
+	Pulse* Pump3 = new Pulse(dtPumpL3, dtPumpT3, pEJ3, Xcm2_3);
+
+
+
+
+
+	
+
+
+
+
+
+
 }
 
-
-*/

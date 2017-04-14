@@ -158,22 +158,12 @@ int writeToFile(const char *ofname, double *data1, complex<double> *data2) {
 	filestr.close();
 }
 /*=====================================================================*/
-double xeffc(int crystnum, int stage) {
-// Returns xeff.
-	double xeff;
-	switch(crystnum) {
-		case 1: xeff = 4.04; 
-			cout << endl << endl << "*********************************************" << endl;
-			cout << "Stage " << stage << ": BBO" << endl; break;
-			cout << "*********************************************" << endl;
-		case 2: xeff = 1.676; 
-			cout << endl << endl << "*********************************************" << endl;
-			cout << endl << endl << "Stage " << stage << ": LBO" << endl; break;
-			cout << "*********************************************" << endl;
-		case 3: xeff = 0; errorhl(3); break;
-	}
-	return xeff;
-}
+
+
+
+
+
+
 /*=====================================================================*/
 double calcRefInd(int crystnum, double lambda, int oe) {
 // Returns refractive index for wavelength lambda.
