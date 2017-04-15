@@ -152,82 +152,10 @@ int main(int argc, char *argv[]) {
 
 
 
-
-
-
-
-
-
-
-
-
 itt
-/*=====================================================================*/
-// Set up stage parameters.
-	for (cStage=1;cStage<=nStage;cStage++) {
-		warned = 0;
-		if (cStage==1) {
-			cCryst = cryst1;
-			thdeg = thdeg1;
-			xeff = xeffc(cCryst,cStage);
-			noStep = noStep1;
-			crysLth = crysLth1;
-			dtPumpL = dtPumpL1;
-			dtPumpT = dtPumpT1;
-			dtSigL = dtSigL1;
-			dtSigT = dtSigT1;
-			dtIdlL = dtIdlL1;
-			dtIdlT = dtIdlT1;
-			pEJ = pEJ1;
-			sEJ = sEJ1;
-			iEJ = iEJ1;
-			Xcm2 = Xcm2_1;
-		}
-		else if(cStage==2) {
-			cCryst = cryst2;
-			thdeg=thdeg2;
-			xeff=xeffc(cCryst,cStage);
-			noStep = noStep2;
-			crysLth = crysLth2;
-			dtPumpL = dtPumpL2;
-			dtPumpT = dtPumpT2;			
-			pEJ = pEJ2;
-			Xcm2 = Xcm2_2;
-		}
-		else if(cStage==3) {
-			cCryst = cryst3;
-			thdeg = thdeg3;
-			xeff = xeffc(cCryst,cStage);
-			noStep = noStep3;
-			crysLth = crysLth3;
-			dtPumpL = dtPumpL3;
-			dtPumpT = dtPumpT3;			
-			pEJ = pEJ3;
-			Xcm2 = Xcm2_3;
-		}
-/*=====================================================================*/
-	// Time window
-		tWin = dtps*nt;
-	// Distance step
-		dzcm = crysLth/((double) noStep);
-	// Calculate idler wavelength
-		/*double freqp, freqs, freqd; // needed for same result
-		freqp = c*1e6/(1e-3*pLambda_nm);
-		freqs = c*1e6/(1e-3*sLambda_nm);
-		freqd = freqp-freqs;
-		omegaSig0 = tPi*freqs/1e12; // 1/ps
-		omegaPum0 = tPi*freqp/1e12; // 1/ps
-		omegaIdl0 = tPi*freqd/1e12; // 1/ps
-		omegaSig0 = omegaSig0*1e3; // 1/fs
-		omegaPum0 = omegaPum0*1e3; // 1/fs
-		omegaIdl0 = omegaIdl0*1e3; // 1/fs
-		//had to do it like that do prevent num errors.. :/
-		iLambda_nm = (c*1e6)/(freqd)*1e3;*/
-		/*
-		float a=77617.0;
-		float b=33096.0;
-		float f=333.75*pow(b,6)+pow(a,2)*(11*pow(a,2)*pow(b,2)-pow(b,6)-121*pow(b,4)-2)+5.5*pow(b,8)+a/(2*b);
-		cout << f << endl;
+
+/*
+
 		exit(0);
 		*/
 		omegaSig0 = tPi*c/(1e6*sLambda_nm); // in 1/fs
