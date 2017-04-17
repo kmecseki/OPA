@@ -1,18 +1,14 @@
-
-#include<iostream>
-#include<string>
-#include<vector>
-#include<fstream>
-#include<sstream>
-#include<memory>
+#include <numbers>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <fstream>
+#include <sstream>
+#include <memory>
 //#include<cstdio>
 
 #include "pulse.h"
 #include "phys_constants.h"
-
-
-
-
 
 int main(int argc, char *argv[]) {
 	
@@ -164,27 +160,26 @@ int main(int argc, char *argv[]) {
 	// Calculate idler wavelength and angular frequencies.
 	
 	Pump1->m_wavelength = pLambda_nm;
-	Pump1->m_freq = Pump1->calc_freq(Pump1->m_wavelength);
-	Pump2->m_freq = Pump1->m_freq;
-	Pump3->m_freq = Pump1->m_freq;
 	Signal1->m_wavelength = sLambda_nm;
-	Signal1->m_freq = Signal1->calc_freq(Signal1->m_wavelength);
-	Idler1->m_freq = Pump1->m_freq - Signal1->m_freq;
 
 	Pump1->m_omega0 = Pump1->calc_omega0();
 	Pump2->m_omega0 = Pump1->calc_omega0();
 	Pump3->m_omega0 = Pump1->calc_omega0();
 	Signal1->m_omega0 = Signal1->calc_omega0();
-	Idler1->m_omega0 = Idler1->calc_omega0();
+	Idler1->m_omega0 = Pump1->m_omega0 - Signal1->m_omega0;
 	
 	// This is to prevent numerical errors due to large numbers (>1e30+)
-	Idler1->m_wavelength = (PhysicalConstants::c0 * 1e6) / (Idler1->m_freq) * 1e3;
+	Idler1->m_wavelength = (2 * std::numbers::pi * PhysicalConstants::c0) / (Idler1->m_omega0 * 1e6);
+	std::cout << "Idler wavelength: " << Idler1->m_wavelength << " nm." << std::endl;
 
-
-
-
-
-
+	/*=====================================================================*/
+	// Calculate refractive indices
+	// Note: Only the pump travels in the non-ordinary plane for our PM case.
+	stage1->m_nOrdSig = stage1->calcRefInd(Signal1->m_wavelength, 3);
+	stage1->m_nOrdIdl = stage1->calcRefInd(Idler1->m_wavelength, 3);
+	stage1->m_nOrdPum = stage1->calcRefInd(Pump1->m_wavelength, 2);
+	stage1->m_xOrdPum = stage1->calcRefInd(Pump1->m_wavelength, 1);
+	
 
 
 }

@@ -158,16 +158,8 @@ itt
 
 		exit(0);
 		*/
-		omegaSig0 = tPi*c/(1e6*sLambda_nm); // in 1/fs
-		omegaPum0 = tPi*c/(1e6*pLambda_nm);
-		omegaIdl0 = omegaPum0 - omegaSig0;
-		iLambda_nm = tPi*c/(1e6*omegaIdl0);
-		cout << "Idler wavelength: " << iLambda_nm << " nm." << endl;
-	// Calculate refractive indices
-		nOrdSig = calcRefInd(cCryst, sLambda_nm, 3);
-		nOrdIdl = calcRefInd(cCryst, iLambda_nm, 3);
-		nOrdPum = calcRefInd(cCryst, pLambda_nm, 2);
-		nExPum = calcRefInd(cCryst, pLambda_nm, 1);
+
+
 /*=====================================================================*/
 // Calculate phase matching
 		cout << "\tn_o Signal\t" << "n_o Idler\t" << "n_o Pump\t" << "n_e Pump" << endl;
