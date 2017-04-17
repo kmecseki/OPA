@@ -3,6 +3,7 @@
 #include <iostream>
 #include "pulse.h"
 #include "phys_constants.h"
+#include "utils.h"
 
 Crystal::Crystal(int ctype, int stage, int noStep, double thdeg, double cryslth) : 
     m_cType(ctype),
@@ -131,6 +132,54 @@ double Crystal::calcRefInd(double lambda, int oe) {
 				return 0;
 	}
 	
+}
+
+double Crystal::calc_k(double wlpum, double wlsig, double wlidl) {
+	// Calculates and sets the instance's wavenumber k. In 1/micron.
+	this->m_kSig = m_nOrdSig * 2 * std::numbers::pi * 1e3 / wlsig;
+	this->m_kIdl = m_nOrdIdl * 2 * std::numbers::pi * 1e3 / wlidl;
+	this->m_kPum = m_nOrdPum * 2 * std::numbers::pi * 1e3 / wlpum;
+}
+
+double Crystal::calcPumCo() {
+	// The pump wavelength should be in nm
+	// TODO: fix these functions that take lambda, it is now part of the class
+	double tanThetaSq, nonePum;	
+	double nExPum, nOrPum;
+	tanThetaSq = std::pow(tan(deg2rad(m_thdeg)),2);
+	nOrPum = calcRefInd(m_pLam, 2);
+	nExPum = calcRefInd(m_pLam, 1);
+	nonePum = std::pow((nOrPum/nExPum),2);
+	return std::sqrt((1 + tanThetaSq) / (1 + nonePum * tanThetaSq));
+}
+
+void Crystal::calc_PM(double nColl_deg, double gamma_rad, bool perfectpm) {
+	double pa = std::cos(deg2rad(nColl_deg)) * m_nOrdSig/m_sLam; // nm
+	double pb = std::cos(gamma_rad) * m_nOrdIdl / m_iLam;
+	double pc = m_nOrdPum / m_pLam;
+	double pd = m_xOrdPum / m_pLam;
+	double pu = std::pow(((pa + pb) / pc),2);
+	double pw = std::pow(((pa + pb) / pd),2);
+	double puw = (1 - pu) / (pw - 1);
+	if (puw < 0) {
+		std::cout << "Error: No phase matching angle!" << std::endl;
+		exit(0);
+	}
+	m_pAng = rad2deg(std::atan(std::sqrt(puw)));
+
+	// Phase mismatch and coherence length
+	if (perfectpm) {
+		m_dk = 0;
+		m_cohL = 0;
+	}
+	else {
+		//dk = kPum-kSig-kIdl;
+		m_dk = (m_knPum - m_knSig - m_knIdl) * 1e4; // in 1/cm
+		m_cohL = abs(2 * std::numbers::pi / (2 * m_dk));  // in micron TODO: is dk used anywhere else?
+	}
+	using namespace std::complex_literals;
+	m_pmism = std::exp(1i * m_dk * m_dzcm / 2e4);
+	// We could end the scan loop here.
 }
 
 Pulse::Pulse(double dtL, double dtT, double EJ, double Xcm2) :

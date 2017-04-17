@@ -1,4 +1,5 @@
 #include <numbers>
+#include <cmath>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -9,6 +10,7 @@
 
 #include "pulse.h"
 #include "phys_constants.h"
+#include "utils.h"
 
 int main(int argc, char *argv[]) {
 	
@@ -75,7 +77,7 @@ int main(int argc, char *argv[]) {
 	double thdeg2 = parsed.at(o++);
 	double thdeg3 = parsed.at(o++);
 	double nColl_deg = parsed.at(o++);
-	double ppm = parsed.at(o++);
+	int ppm = parsed.at(o++);
 	double pLambda_nm = parsed.at(o++);
 	double sLambda_nm = parsed.at(o++);
 	double pEJ1 = parsed.at(o++);
@@ -138,7 +140,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Time window
-		double tWin = dtps * nt;
+	double tWin = dtps * nt;
 
 
 	/*=====================================================================*/
@@ -180,6 +182,43 @@ int main(int argc, char *argv[]) {
 	stage1->m_nOrdPum = stage1->calcRefInd(Pump1->m_wavelength, 2);
 	stage1->m_xOrdPum = stage1->calcRefInd(Pump1->m_wavelength, 1);
 	
+	/*=====================================================================*/
+	// Calculate phase matching
+	std::cout << "\tn_o Signal\t" << "n_o Idler\t" << "n_o Pump\t" << "n_e Pump" << std::endl;
+	std::cout << "\t" << stage1->m_nOrdSig << "\t\t" << stage1->m_nOrdIdl << "\t\t" << stage1->m_nOrdPum << "\t\t" << stage1->m_xOrdPum << std::endl;
+
+	// Angular wavenumbers
+	stage1->calc_k(Pump1->m_wavelength, Signal1->m_wavelength, Idler1->m_wavelength);
+	//stage2->calc_k(Pump2->m_wavelength, Signal2->m_wavelength, Idler2->m_wavelength); 
+	//stage3->calc_k(Pump3->m_wavelength, Signal3->m_wavelength, Idler3->m_wavelength); 
+
+	// Effective angular wavenumbers
+	// TODO: function for stages
+	double gamma_rad1 = std::asin(stage1->m_kSig * std::sin(deg2rad(nColl_deg))/stage1->m_kIdl);
+	stage1->m_coePum = stage1->calcPumCo();
+	stage1->m_knSig = stage1->m_kSig * std::cos(deg2rad(nColl_deg)); // in 1/micron
+	stage1->m_knIdl = stage1->m_kIdl * cos(gamma_rad1);
+	stage1->m_knPum = stage1->m_kPum * stage1->m_coePum;
+
+	double gamma_rad2 = std::asin(stage2->m_kSig * std::sin(deg2rad(nColl_deg))/stage2->m_kIdl);
+	stage2->m_coePum = stage2->calcPumCo();
+	stage2->m_knSig = stage2->m_kSig * std::cos(deg2rad(nColl_deg));
+	stage2->m_knIdl = stage2->m_kIdl * cos(gamma_rad2);
+	stage2->m_knPum = stage2->m_kPum * stage2->m_coePum;	
+
+	double gamma_rad3 = std::asin(stage3->m_kSig * std::sin(deg2rad(nColl_deg))/stage3->m_kIdl);
+	stage3->m_coePum = stage3->calcPumCo();
+	stage3->m_knSig = stage3->m_kSig * std::cos(deg2rad(nColl_deg));
+	stage3->m_knIdl = stage3->m_kIdl * cos(gamma_rad3);
+	stage3->m_knPum = stage3->m_kPum * stage3->m_coePum;
+
+	// Calculate phase matching angle
+	// Perfect phase match?
+	bool PerfPM = static_cast<bool>(ppm);
+	stage1->calc_PM(nColl_deg, gamma_rad1, PerfPM);
+	//stage2->calc_PM(nColl_deg, gamma_rad2, PerfPM);
+	//stage3->calc_PM(nColl_deg, gamma_rad3, PerfPM);
+
 
 
 }

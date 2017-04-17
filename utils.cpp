@@ -1,3 +1,31 @@
+#include <numbers>
+#include "utils.h"
+
+/*=====================================================================*/
+double deg2rad(double deg) {
+// Returns input deg value in radians.
+	return deg / 360 * 2 * std::numbers::pi;
+}
+/*=====================================================================*/
+double rad2deg(double rad) {
+// Returns input deg value in radians.
+	return rad * 360 / (2 * std::numbers::pi) ;
+}
+
+/*
+
+
+
+
+
+
+
+
+
+
+
+
+
 #include <cstdio>
 #include <cmath>
 #include <stdlib.h>
@@ -79,27 +107,10 @@ int errorhl(int h) {
 	}
 	exit(0);
 }
-/*=====================================================================*/
-int warninghl(int w) {
-	switch(w) {
-		case 1: cout << "Warning: Wavelength outside transmission window" << endl; break;		
-	}
-}
-/*=====================================================================*/
 
 
 
 
-
-
-
-
-
-
-
-
-
-/*=====================================================================*/
 int writeToFile(const char *ofname, double *data1, double *data2) {
 // Opens a file with name ofname, and outputs real data
 	ofstream filestr;
@@ -116,6 +127,7 @@ int writeToFile(const char *ofname, double *data1, double *data2) {
 	filestr.close();
 }
 /*=====================================================================*/
+/*
 int writeToFile(const char *ofname, double data1, double data2) {
 // Opens a file with name ofname, and outputs single real data
 	ofstream filestr;
@@ -128,7 +140,7 @@ int writeToFile(const char *ofname, double data1, double data2) {
 	}
 	filestr.close();
 }
-/*=====================================================================*/
+
 int writeToFile(const char *ofname, double data1, complex<double> data2) {
 // Opens a file with name ofname, and outputs single complex data
 	ofstream filestr;
@@ -141,7 +153,7 @@ int writeToFile(const char *ofname, double data1, complex<double> data2) {
 	}
 	filestr.close();
 }
-/*=====================================================================*/
+
 int writeToFile(const char *ofname, double *data1, complex<double> *data2) {
 // Opens a file with name ofname, and outputs complex data
 	ofstream filestr;
@@ -157,137 +169,17 @@ int writeToFile(const char *ofname, double *data1, complex<double> *data2) {
 	}
 	filestr.close();
 }
-/*=====================================================================*/
 
 
 
 
 
 
-/*=====================================================================*/
-double calcRefInd(int crystnum, double lambda, int oe) {
-// Returns refractive index for wavelength lambda.
-// Input wavelength should be in nm.
-// oe = 1 for extraordinary, oe = anything else for ordinary wave.
-// oe = 1 for x, oe = 2 for y, oe = 3 for z planes in case of biaxial crystal
-	double refInd;
-	double min, max;
-	double p1, p2, p3, p4, p5;
-	double lambdax;
-	lambda = lambda/1e3;
-	lambdax = lambda*lambda;
-	switch(crystnum) {
-		case 1: // BBO - transparency 0.189 to 3.5	
-				min = 0.189;
-				max = 3.5;
-				if (lambda < min || lambda > max) {
-					if (warned==0) {
-						warninghl(1); warned = 1;
-					}
-					if (lambda < min) lambda = min;
-					else lambda = max;
-					lambdax = lambda*lambda;
-				}
-				if (oe != 1) { // From Dmitriev
-					p1=2.7359;
-					p2=0.01878;
-					p3=0.01822;
-					p4=-0.01354;
-				}
-				else {
-					p1=2.3753;
-					p2=0.01224;
-					p3=0.01667;
-					p4=-0.01516;
-				}
-				refInd = sqrt(p1+p2/(lambdax-p3)+p4*lambdax);
-				break;
-		case 2: // LBO - transparency 0.155 to 3.2	
-				// Using XY plane
-				min = 0.155;
-				max = 3.2;
-				if (lambda < min || lambda > max) {
-					if (warned==0) {
-						warninghl(1); warned = 1;
-					}
-					if (lambda < min) lambda = min;
-					else lambda = max;
-					lambdax = lambda*lambda;
-				}
-				if (oe == 1) {
-					p1=2.4542;
-					p2=0.01125;
-					p3=0.01135;
-					p4=-0.01388;
-				}
-				else if (oe == 2) {
-					p1=2.5390;
-					p2=0.01277;
-					p3=0.01189;
-					p4=-0.01848;
-				}
-				else if (oe == 3) {
-					p1=2.5865;
-					p2=0.01310;
-					p3=0.01223;
-					p4=-0.01861;
-				}
-				refInd = sqrt(p1+p2/(lambdax-p3)+p4*lambdax);
-				break;
-		case 3: // KDP - not fully supported yet
-				// Transparency 0.174 to 1.57
-			/*  min = 0.174;
-				max = 1.57;
-				if (lambda < min || lambda > max) {
-					if (warned==0) {
-						warninghl(1); warned = 1;
-					}
-					if (lambda < min) lambda = min;
-					else lambda = max;
-					lambdax = lambda*lambda;
-				}
-				if (oe != 1) {
-					p1=2.259276;
-					p2=0.01008956;
-					p3=0.012942625;
-					p4=13.00522;
-					p5=400;
-				}
-				else {
-					p1=2.132668;
-					p2=0.008637494;
-					p3=0.012281043;
-					p4=3.2279924;
-					p5=400;
-				}
-				refInd = sqrt(p1+p2/(lambdax-p3)+p4*lambdax/(lambdax-p5)); */
-				refInd = 0; errorhl(3); break;
-	}
-	return refInd;
-}
-/*=====================================================================*/
-double deg2rad(double deg) {
-// Returns input deg value in radians.
-	return deg/360*tPi;
-}
-/*=====================================================================*/
-double rad2deg(double rad) {
-// Returns input deg value in radians.
-	return rad*360/tPi;
-}
-/*=====================================================================*/
-double CalcPumCo(double lambda) {
-// pump wavelength should be in nm	
-	double tanThetaSq, nonePum, coePum;	
-	double nExPum, nOrPum;
-	tanThetaSq = pow(tan(deg2rad(thdeg)),2);
-	nOrPum = calcRefInd(cCryst, lambda, 2);
-	nExPum = calcRefInd(cCryst, lambda, 1);
-	nonePum = pow((nOrPum/nExPum),2);
-	coePum = sqrt((1 + tanThetaSq)/(1 + nonePum*tanThetaSq));
-	return coePum;
-}
-/*=====================================================================*/
+
+
+
+
+/*=====================================================================
 int GenProfile(complex<double> *timeProfile, int profType, double tl, double tt, double xcm2, double EJ, double fw, double tCoh, double cpp1, double cpp2, double cpd1, double cpd2) {
 // This function generates a skewed gaussian or sech2 profile
 // Adds background, noise and chirp if needed.
@@ -489,7 +381,7 @@ int GenProfile(complex<double> *timeProfile, int profType, double tl, double tt,
 	fftw_destroy_plan(p);
 // Adding a background will be an option later + noise
 }
-/*=====================================================================*/
+/*=====================================================================
 double FindMax(double *vek, int s) {
 // Finds maximum of vector 'vek' of size 's'.
 	double maxi=0;
@@ -499,7 +391,7 @@ double FindMax(double *vek, int s) {
 	}
 	return maxi;
 }
-/*=====================================================================*/
+/*=====================================================================
 double FindMax(complex<double> *cfield, int s) {
 // Finds maximum of vector 'vek' of size 's'.
 	double maxi=0;
@@ -509,7 +401,7 @@ double FindMax(complex<double> *cfield, int s) {
 	}
 	return maxi;
 }
-/*=====================================================================*/
+/*=====================================================================
 double rInt(double *absTp) {
 // Calculates energy within an intensity profile
 	double area=0;
@@ -519,7 +411,7 @@ double rInt(double *absTp) {
 	area=area*dtps*1e-12;
 	return area;
 }
-/*=====================================================================*/
+/*=====================================================================*
 double cInt(complex<double> *cfield, double fww) {
 // Calculates energy within an intensity profile - given complex field
 	double area=0;
@@ -530,7 +422,7 @@ double cInt(complex<double> *cfield, double fww) {
 //	cout << "area" << area << endl;
 	return area;
 }
-/*=====================================================================*/
+/*=====================================================================*
 complex<double>* noise (complex<double> *cva, int profType, int s, double fx) {
 	complex<double> phas;
 	double aj, sumsq=0, factor;
@@ -549,7 +441,7 @@ complex<double>* noise (complex<double> *cva, int profType, int s, double fx) {
 	 // Missing bit:    call fftnr(eva,n2,factor,+1)
 	return cva;
 }
-/*=====================================================================*/
+/*=====================================================================*
 int chirper_norm(complex<double> *timeProfile, int profType, int size, double phi2, double phi3, fftw_plan p) {
 // Chirping function - normal chirp
 	complex<double>* spec;
@@ -585,7 +477,7 @@ int chirper_norm(complex<double> *timeProfile, int profType, int size, double ph
 	}
 	fftshift(timeProfile,nt);
 }
-/*=====================================================================*/
+/*=====================================================================*
 int chirper_direct(complex<double> *timeProfile, int size, double chp1, double chp2) {
 // This function applies linear (and nonlinear) chirp directly to the complex field
 // in the time domain
@@ -597,7 +489,7 @@ int chirper_direct(complex<double> *timeProfile, int size, double chp1, double c
 		timeProfile[j] = polar(abs(timeProfile[j]), j*j*(par1+par2*j*j));
 	}
 }
-/*=====================================================================*/
+/*=====================================================================*
 int fftshift(complex<double> *vekt, int size) {
 // FFT-shift
 	complex<double> temp, temp2;
@@ -611,7 +503,7 @@ int fftshift(complex<double> *vekt, int size) {
 	}
 
 }
-/*=====================================================================*/
+/*=====================================================================*
 int spectrum(complex<double> *timeProf, double* wl, const char *ofname, int profType) {
 // This function calculates the pulse spectrum, FWHM, and writes into file
 	complex<double> *spek;
@@ -631,7 +523,7 @@ int spectrum(complex<double> *timeProf, double* wl, const char *ofname, int prof
     cout << "FWHM : " << FWHM << " nm" << endl;
     writeToFile(ofname, wl, tempspek);    
 }
-/*=====================================================================*/
+/*=====================================================================*
 double get_FWHM(complex<double> *profile, double* wl) {
 // Finds FWHM in indeces, need to scale
 	double max = FindMax(profile, nt);
@@ -651,8 +543,8 @@ double get_FWHM(complex<double> *profile, double* wl) {
 		else k2 = 0;
 	}
 	return abs(wl[k1]-wl[k2]);
-}
-/*=====================================================================*/
+
+/*=====================================================================*
 int disperse(complex<double> *profile, complex<double> *phase, int nt, int proftype) {
 // Applies dispersive phase
 //fix: proftype not needed - remove
@@ -678,7 +570,7 @@ int disperse(complex<double> *profile, complex<double> *phase, int nt, int proft
 	}
 	fftshift(profile,nt);
 }
-/*=====================================================================*/
+/*=====================================================================*
 double nlindx(int krnum) {
 // Returns non linear index of media in cm2/W
 	double n2;
@@ -696,7 +588,7 @@ double nlindx(int krnum) {
 	}
 	return n2;
 }
-/*=====================================================================*/
+/*=====================================================================*
 int nlshift(int krnum, complex<double>* profile, double fw, double n2) {
 // Nonlinear phase shift
 	double phaze;
@@ -715,7 +607,7 @@ int nlshift(int krnum, complex<double>* profile, double fw, double n2) {
 		profile[j] = pfj*polar(1.0,-dphas);
 	}
 }
-/*=====================================================================*/
+/*=====================================================================*
 // OPA step
 int OPA(complex<double>* Pum, complex<double>* Sig, complex<double>* Idl, int noStep, int cStage, double fwp, double fws, double fwi, int chirpType, int sProf, int pProf, int iProf, complex<double>* sigPhase, complex<double>* idlPhase, complex<double>* pumPhase) {
 // Numerical integration using Runga Kutta 4th sequence

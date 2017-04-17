@@ -154,48 +154,8 @@ int main(int argc, char *argv[]) {
 
 itt
 
-/*
-
-		exit(0);
-		*/
 
 
-/*=====================================================================*/
-// Calculate phase matching
-		cout << "\tn_o Signal\t" << "n_o Idler\t" << "n_o Pump\t" << "n_e Pump" << endl;
-		cout << "\t" << nOrdSig << "\t\t" << nOrdIdl << "\t\t" << nOrdPum << "\t\t" << nExPum << endl;
-	// Angular wavenumbers
-		kSig = nOrdSig * tPi*1e3/sLambda_nm; // in 1/micron
-		kIdl = nOrdIdl * tPi*1e3/iLambda_nm;
-		kPum = nOrdPum * tPi*1e3/pLambda_nm;
-	// Effective angular wavenumbers
-		gamma_rad = asin(kSig * sin(deg2rad(nColl_deg))/kIdl);
-		coePum = CalcPumCo(pLambda_nm);
-		knSig = kSig * cos(deg2rad(nColl_deg)); // in 1/micron
-		knIdl = kIdl * cos(gamma_rad);
-		knPum = kPum * coePum;
-	// Calculate phase matching angle
-		pa = cos(deg2rad(nColl_deg))*nOrdSig/sLambda_nm; // nm
-		pb = cos(gamma_rad)*nOrdIdl/iLambda_nm;
-		pc = nOrdPum/pLambda_nm;
-		pd = nExPum/pLambda_nm;
-		pu = pow(((pa+pb)/pc),2);
-		pw = pow(((pa+pb)/pd),2);
-		puw = (1-pu)/(pw-1);
-		if (puw<0) errorhl(4);
-		pAng = rad2deg(atan(sqrt(puw)));
-	// Phase mismatch and coherence length
-		if (ppm == 1) {
-			dk = 0;
-			cohLength = 0;
-		}
-		else {
-			//dk = kPum-kSig-kIdl;
-			dk = (knPum-knSig-knIdl)*1e4; // in 1/cm
-			cohLength = abs(tPi/(2*dk));  // in micron
-		}
-		cPhMisM = exp(ci*dk*dzcm/2e4);
-		// here could end the scan loop
 /*=====================================================================*/
 	// Wavelength scan limits
 		dw = tPi*1e-3/tWin; // 1/fs
