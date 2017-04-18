@@ -157,103 +157,14 @@ itt
 
 
 /*=====================================================================*/
-	// Wavelength scan limits
-		dw = tPi*1e-3/tWin; // 1/fs
-		pLam1 = tPi*c*1e-6/(omegaPum0+nt/2*dw);  // nm
-		pLam2 = tPi*c*1e-6/(omegaPum0-nt/2*dw);
-		sLam1 = tPi*c*1e-6/(omegaSig0+nt/2*dw);
-		sLam2 = tPi*c*1e-6/(omegaSig0-nt/2*dw);		
-		iLam1 = tPi*c*1e-6/(omegaIdl0+nt/2*dw);
-		iLam2 = tPi*c*1e-6/(omegaIdl0-nt/2*dw);		
-		cout << "\tSignal\t" << "\t\tPump\t" << "\t\tIdler\t" << endl;
-		cout << "Scan wavelengths:" << endl;
-		cout << "   " << sLam1 << " " << sLam2 << "\t  " << pLam1 << " " << pLam2 << "\t  " << iLam1 << " " << iLam2 << "\t nm " << endl;
-/*=====================================================================*/
-	// Calculating angular wavenumbers and phases for all the wavelengths in this range.
-		dk_grid = 1e9*dw/c; // in microns
-		for (j=0;j<nt;j++) {
-			kvPumj = tPi*1e3/pLam2 + j*dk_grid; // microns
-			kvSigj = tPi*1e3/sLam2 + j*dk_grid;
-			kvIdlj = tPi*1e3/iLam1 - j*dk_grid; // FIX: hopefully it fixes idler issue
-			if (kvIdlj<0) kvIdlj=0.1;
-			pLambdaj[j] = tPi*1e3/kvPumj; // nm
-			sLambdaj[j] = tPi*1e3/kvSigj;
-			iLambdaj[j] = tPi*1e3/kvIdlj; // going backwards
-			nPumj[j] = CalcPumCo(pLambdaj[j]);
-			nPumj[j] = nPumj[j] * calcRefInd(cCryst, pLambdaj[j], 2);
-			nSigj[j] = calcRefInd(cCryst, sLambdaj[j], 3);
-			nIdlj[j] = calcRefInd(cCryst, iLambdaj[j], 3); // going backwards
-			phiPumj[j] = -kvPumj*dzcm*nPumj[j];
-			phiSigj[j] = -kvSigj*dzcm*nSigj[j]*cos(deg2rad(nColl_deg));
-			gamsij = kvSigj*nSigj[j]*sin(deg2rad(nColl_deg))/(kvIdlj*nIdlj[j]);
-			if(abs(gamsij)<=1.0)
-				phiIdlj[j] = -kvIdlj*dzcm*nIdlj[j]*cos(asin(gamsij));
-			else phiIdlj[j] = 0;
-		}
-/*=====================================================================*/
-/**/// FIX: Reverse again idler indeces??? Ebbe belenezni jobban
-	// Uncomment this section for original idler handling
-		for (j=0;j<nt;j++) {
-			temp[j] = phiIdlj[nt-1-j];
-		}
-		for (j=0;j<nt;j++) {
-			phiIdlj[j] = temp[j];
-		}
-		for (j=0;j<nt;j++) {
-			temp[j] = nIdlj[nt-1-j];
-		}
-		for (j=0;j<nt;j++) {
-			nIdlj[j] = temp[j];
-		}/**/
-/*=====================================================================*/
-	// Phase velocities
-		phasVelPum = c*1e2/nPumj[nt/2]; // cm/sec
-		phasVelSig = c*1e2/nSigj[nt/2];
-		phasVelIdl = c*1e2/nIdlj[nt/2-1]; // FIX: Uncomment for ori handling
-		// phasVelIdl = c*1e2/nIdlj[nt/2]; // FIX: When it is the new way
-	// Phase delays
-		phasdtPum = crysLth*1e12/phasVelPum; // ps
-		phasdtSig = crysLth*1e12/phasVelSig;
-		phasdtIdl = crysLth*1e12/phasVelIdl;
-	// Group velocities
-		gVelPum = c*1e2/(nPumj[nt/2]+kPum/nOrdPum*c*(nPumj[nt/2+1]-nPumj[nt/2-1])/(2.0*dw*1e9)); // cm/s
-		gVelSig = c*1e2/(nSigj[nt/2]+kSig/nOrdSig*c*(nSigj[nt/2+1]-nSigj[nt/2-1])/(2.0*dw*1e9));
-		gVelIdl = c*1e2/(nIdlj[nt/2]+kIdl/nOrdIdl*c*(nIdlj[nt/2+1]-nIdlj[nt/2-1])/(2.0*dw*1e9)); // Original idler handling is in use
-		//gVelIdl = c*1e2/(nIdlj[nt/2]+kIdl/nOrdIdl*c*(nIdlj[nt/2-1]-nIdlj[nt/2+1])/(2.0*dw*1e9)); // If new idler handling is in use
-		// FIX: az eggyel fentebb levo sort atirni, ha idler indexet cserelek
-	// Group time delays
-		gtdPum = 1e12*dzcm/gVelPum; // ps
-		gtdSig = 1e12*dzcm/gVelSig;
-		gtdIdl = 1e12*dzcm/gVelIdl;
 
-		cout << "Phase velocities:" << endl;
-		cout << "\t" << phasVelSig << "\t     " << phasVelPum << "\t     " << phasVelIdl << "\t" << "cm/s" << endl;
-		cout << "Phase delays:" << endl;
-		cout << "\t" << phasdtSig << "\t\t\t" << phasdtPum << "\t\t\t" << phasdtIdl << "\t\t" << "ps" << endl;
-		cout << "Group velocities:" << endl;
-		cout << "\t" << gVelSig << "\t     " << gVelPum << "\t     " << gVelIdl << "\t" << "cm/s" << endl;
-		cout << "Group delays:" << endl;
-		cout << "\t" << gtdSig << "\t\t\t" << gtdPum << "\t\t\t" << gtdIdl << "\t\t" << "ps" << endl;
+/*=====================================================================*/
+
+/*=====================================================================*/
+
+
 	
-	// Relative group-time delay
-		grDelPumSig = (gtdPum - gtdSig)* noStep; // ps
-		grDelPumIdl = (gtdPum - gtdIdl)* noStep;
-		grDelSigIdl = (gtdSig - gtdIdl)* noStep;
-		cout << "Relative Group time delays" << endl;
-		cout << " Signal - Pump \t\t" << -grDelPumSig  << " ps \t Positive for slow signal";
-		if (-grDelPumSig<0)
-			cout << " -> OK! " << endl;
-		cout << " Idler - Pump \t\t" << -grDelPumIdl  << " ps \t Positive for slow idler";
-		if (-grDelPumIdl<0) 
-			cout << " -> OK! " << endl;
-		cout << " Idler - Signal \t" << -grDelSigIdl  << " ps \t Positive for fast signal";
-		if (-grDelSigIdl<0) 
-			cout << " -> OK! " << endl;
-	// Print phase matching info
-		cout << "Phase matching summary:" << endl;
-		cout << " Phase matching angle: " << pAng << endl;
-		cout << " Angle of propagation: " << thdeg << endl;
-		cout << " Coherence length: " << cohLength << " um" << endl;
+
 /*=====================================================================*/
 	// Calculate at which angle k vector triangle closes properly	
 		if (nColl_deg!=0) {

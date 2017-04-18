@@ -2,6 +2,7 @@
 #ifndef PULSE_H
 #define PULSE_H
 #include <complex>
+#include <vector>
 
 /*=====================================================================*/
 // Create crystals
@@ -28,8 +29,9 @@ class Crystal {
 		std::complex<double> m_pmism;
 		double calcRefInd(double, int);
 		double calc_k(double, double, double);
-		double calcPumCo();
+		double calcPumCo(double);
 		void calc_PM(double, double, bool);
+		void setPhaseVel(int, double, std::vector<double>, std::vector<double>, std::vector<double>, double*, double*, double*);
 
 	private:
 		double calc_xeff();
@@ -47,8 +49,11 @@ class Pulse {
 		double m_wavelength;
 		double m_nOrd;
 		double m_xOrd;
+		double m_lam1, m_lam2;
 		Pulse(double, double, double, double);
 		double calc_omega0();
+		void calc_limits(int, double);
+		
 
 };
 

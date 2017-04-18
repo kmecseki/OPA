@@ -43,7 +43,7 @@ double Crystal::calcRefInd(double lambda, int oe) {
 
 	double min, max;
 	double p1, p2, p3, p4, p5;
-	lambda = lambda/1e3; // convert to microns
+	lambda = lambda / 1e3; // convert to microns
 	int warned = 0;
 	switch(m_cType) {
 		case 1: // BBO - transparency 0.189 to 3.5	
@@ -141,14 +141,14 @@ double Crystal::calc_k(double wlpum, double wlsig, double wlidl) {
 	this->m_kPum = m_nOrdPum * 2 * std::numbers::pi * 1e3 / wlpum;
 }
 
-double Crystal::calcPumCo() {
+double Crystal::calcPumCo(double wavelength) {
 	// The pump wavelength should be in nm
 	// TODO: fix these functions that take lambda, it is now part of the class
 	double tanThetaSq, nonePum;	
 	double nExPum, nOrPum;
 	tanThetaSq = std::pow(tan(deg2rad(m_thdeg)),2);
-	nOrPum = calcRefInd(m_pLam, 2);
-	nExPum = calcRefInd(m_pLam, 1);
+	nOrPum = calcRefInd(wavelength, 2);
+	nExPum = calcRefInd(wavelength, 1);
 	nonePum = std::pow((nOrPum/nExPum),2);
 	return std::sqrt((1 + tanThetaSq) / (1 + nonePum * tanThetaSq));
 }
@@ -175,11 +175,64 @@ void Crystal::calc_PM(double nColl_deg, double gamma_rad, bool perfectpm) {
 	else {
 		//dk = kPum-kSig-kIdl;
 		m_dk = (m_knPum - m_knSig - m_knIdl) * 1e4; // in 1/cm
-		m_cohL = abs(2 * std::numbers::pi / (2 * m_dk));  // in micron TODO: is dk used anywhere else?
+		m_cohL = std::abs(2 * std::numbers::pi / (2 * m_dk));  // in micron TODO: is dk used anywhere else?
 	}
 	using namespace std::complex_literals;
 	m_pmism = std::exp(1i * m_dk * m_dzcm / 2e4);
 	// We could end the scan loop here.
+}
+
+void Crystal::setPhaseVel(int nt, double dw, std::vector<double> nPumj, std::vector<double> nSigj, std::vector<double> nIdlj, double *gtdPum, double *gtdSig, double *gtdIdl) {
+	// Phase velocities
+	double phasVelPum = PhysicalConstants::c0 * 1e2 / nPumj[nt/2]; // cm/sec
+	double phasVelSig = PhysicalConstants::c0 * 1e2 / nSigj[nt/2];
+	double phasVelIdl = PhysicalConstants::c0 * 1e2 / nIdlj[nt/2-1]; // FIX: Uncomment for ori handling
+	// phasVelIdl = c*1e2/nIdlj[nt/2]; // FIX: When it is the new way
+	// Phase delays
+	double phasdtPum = m_cLength * 1e12 / phasVelPum; // ps
+	double phasdtSig = m_cLength * 1e12 / phasVelSig;
+	double phasdtIdl = m_cLength * 1e12 / phasVelIdl;
+	// Group velocities
+	double gVelPum = PhysicalConstants::c0 * 1e2 / (nPumj[nt/2] + m_kPum / m_nOrdPum * PhysicalConstants::c0 *(nPumj[nt/2+1] - nPumj[nt/2-1]) / (2.0  *dw * 1e9)); // cm/s
+	double gVelSig = PhysicalConstants::c0 * 1e2 / (nSigj[nt/2] + m_kSig / m_nOrdSig * PhysicalConstants::c0 *(nSigj[nt/2+1] - nSigj[nt/2-1]) / (2.0 * dw * 1e9));
+	double gVelIdl = PhysicalConstants::c0 * 1e2 / (nIdlj[nt/2] + m_kIdl / m_nOrdIdl * PhysicalConstants::c0 *(nIdlj[nt/2+1] - nIdlj[nt/2-1]) / (2.0 * dw * 1e9)); // Original idler handling is in use
+	//gVelIdl = c*1e2/(nIdlj[nt/2]+kIdl/nOrdIdl*c*(nIdlj[nt/2-1]-nIdlj[nt/2+1])/(2.0*dw*1e9)); // If new idler handling is in use
+	// FIX: az eggyel fentebb levo sort atirni, ha idler indexet cserelek
+	// Group time delays
+	*gtdPum = 1e12 * m_dzcm / gVelPum; // ps
+	*gtdSig = 1e12 * m_dzcm / gVelSig;
+	*gtdIdl = 1e12 * m_dzcm / gVelIdl;
+
+	std::cout << "Phase velocities:" << std::endl;
+	std::cout << "\t" << phasVelSig << "\t     " << phasVelPum << "\t     " << phasVelIdl << "\t" << "cm/s" << std::endl;
+	std::cout << "Phase delays:" << std::endl;
+	std::cout << "\t" << phasdtSig << "\t\t\t" << phasdtPum << "\t\t\t" << phasdtIdl << "\t\t" << "ps" << std::endl;
+	std::cout << "Group velocities:" << std::endl;
+	std::cout << "\t" << gVelSig << "\t     " << gVelPum << "\t     " << gVelIdl << "\t" << "cm/s" << std::endl;
+	std::cout << "Group delays:" << std::endl;
+	std::cout << "\t" << *gtdSig << "\t\t\t" << *gtdPum << "\t\t\t" << *gtdIdl << "\t\t" << "ps" << std::endl;
+
+	// Relative group-time delay
+	double grDelPumSig = (gtdPum - gtdSig)* m_noStep; // ps
+	double grDelPumIdl = (gtdPum - gtdIdl)* m_noStep;
+	double grDelSigIdl = (gtdSig - gtdIdl)* m_noStep;
+	std::cout << "Relative Group time delays" << std::endl;
+	std::cout << " Signal - Pump \t\t" << -grDelPumSig  << " ps \t Positive for slow signal";
+	if (-grDelPumSig<0) {
+		std::cout << " -> OK! " << std::endl;
+	}
+	std::cout << " Idler - Pump \t\t" << -grDelPumIdl  << " ps \t Positive for slow idler";
+	if (-grDelPumIdl<0) {
+		std::cout << " -> OK! " << std::endl;
+	}
+	std::cout << " Idler - Signal \t" << -grDelSigIdl  << " ps \t Positive for fast signal";
+	if (-grDelSigIdl<0) 
+		std::cout << " -> OK! " << std::endl;
+	// Print phase matching info
+	std::cout << "Phase matching summary:" << std::endl;
+	std::cout << " Phase matching angle: " << m_pAng << std::endl;
+	std::cout << " Angle of propagation: " << m_thdeg << std::endl;
+	std::cout << " Coherence length: " << m_cohL << " um" << std::endl;
 }
 
 Pulse::Pulse(double dtL, double dtT, double EJ, double Xcm2) :
@@ -192,5 +245,10 @@ Pulse::Pulse(double dtL, double dtT, double EJ, double Xcm2) :
 double Pulse::calc_omega0() {
 	// Calculate angular frequency using the wavelength
 	return 2 * std::numbers::pi * PhysicalConstants::c0 / (1e6 * m_wavelength); // 1/fs
+}
+
+void Pulse::calc_limits(int nt, double dw) {
+	m_lam1 = 2 * std::numbers::pi * PhysicalConstants::c0 * 1e-6 / ( m_omega0 + nt / 2 * dw);
+	m_lam2 = 2 * std::numbers::pi * PhysicalConstants::c0 * 1e-6 / ( m_omega0 - nt / 2 * dw);	   
 }
 
