@@ -162,91 +162,9 @@ itt
 
 /*=====================================================================*/
 
+/*=====================================================================*/
 
-	
 
-/*=====================================================================*/
-	// Calculate at which angle k vector triangle closes properly	
-		if (nColl_deg!=0) {
-			cout << "Non collinear geometry" << endl;
-			double z, alp;
-			z = (pow(knPum,2)-pow(kIdl,2)+pow(kSig,2))/(2*knPum*kSig);
-			if (z<=1) {
-				alp = rad2deg(acos(z));
-				cout << " k vector triangle closes @ alpha =" << alp << " degs" << endl;
-			}
-			else {
-				alp = 0;
-				errorhl(5);
-			}
-		// Calculated beta from Ross(15)		
-			if (gVelSig/gVelIdl>=1) 
-				cout << "No bandwidth optimised alpha exists" << endl;
-			else {
-				double beta2, alpha2, alpha3, nPumOpt, theOpt;
-				beta2 = acos(gVelSig/gVelIdl);
-			// From Ross(16) - good approx to the optimal noncoll angle, it will
-			// coincide with alpha at optimal phase matching
-				alpha2 = rad2deg(asin(kIdl/knPum)*sin(beta2));
-			// Calculated from Geoff's formula, preferable to Ross(16), as it
-			// does not depend on knPum, which is weakly dependent on theta
-				alpha3 = atan(sin(beta2)/(kSig/kIdl+cos(beta2)));
-			// Using Ross(16) backwards to get optimum pump refractive index
-				nPumOpt = kIdl*sin(beta2)/(kPum/nOrdPum*sin(alpha3));
-				theOpt = rad2deg(asin(sqrt((pow(nOrdPum/nPumOpt,2)-1)/(pow(nOrdPum/nExPum,2)-1))));
-				cout << "Optimal alpha: " << rad2deg(alpha3) << "\t Optimal theta: " << theOpt << endl;
-				cout << "Actual alpha: " << nColl_deg << "\t Actual theta: " << thdeg << endl;
-			}
-		}
-		else cout << "Collinear geometry" << endl;
-		if (mode!=1) exit(0);
-/*=====================================================================*/
-	// Local time frame selection
-	// negative sign because of: gtd = -d(phi)/domega to ensure spatial phase of form exp(-ikz)
-		if (frame==1) 
-			dphm = -dw*gtdSig;
-		else if (frame==2) 
-			dphm = -dw*(gtdSig+gtdPum)/2;
-		else if (frame==3) 
-			dphm = -dw*gtdPum;
-		else errorhl(6);
-		double phiPumjh = phiPumj[nt/2];
-		double phiSigjh = phiSigj[nt/2];
-		double phiIdljh = phiIdlj[nt/2];
-	// Remove central phases and phase gradients
-		for (j=0;j<nt;j++) {
-			phiPumj[j] = phiPumj[j]*1e4 - (j-nt/2)*dphm*1e3 - phiPumjh*1e4;
-			phiSigj[j] = phiSigj[j]*1e4 - (j-nt/2)*dphm*1e3 - phiSigjh*1e4;
-			phiIdlj[j] = phiIdlj[j]*1e4 - (j-nt/2)*dphm*1e3 - phiIdljh*1e4;
-			cPhiPumj[j] = polar(1.0,phiPumj[j]);
-			cPhiSigj[j] = polar(1.0,phiSigj[j]);
-			cPhiIdlj[j] = exp(ci*phiIdlj[j]); //does the same, as it should tested
-			}
-/*=====================================================================*/
-		cPum = 0;
-		if (cStage==1) {
-			cSig = 0;
-			cIdl = 0;
-		}
-/*=====================================================================*/
-	// Create pulses
-		cout << endl << endl << "*********************************************" << endl;
-		cout << "\tCreating pulses" << endl;
-		cout << "*********************************************" << endl;
-	// PUMP
-		if (pEJ!=0) {
-			cout << endl << "Pump:" << endl;
-			if (pProf<0) errorhl(10);
-			fwp = 0.5*c*eps0*(nOrdPum*coePum)*Xcm2; // Check units if sg is wrong
-			GenProfile(timeProfPum, pProf, dtPumpL, dtPumpT, Xcm2, pEJ, fwp, tcPum, chpPum, chpPum2, chpPumL, chpPumNL);
-		}
-		else {
-			for (j=0;j<nt;j++) {
-				timeProfPum[j] = 0;
-			}
-		}
-		//cout << pow(abs(timeProfPum[nt/2]),2) << " " << fwp << " " << dtps << endl;
-		//exit(0);
 	// SIGNAL
 		if (cStage==1) {
 			cout << endl << "Signal:" << endl;

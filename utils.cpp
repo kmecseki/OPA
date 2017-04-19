@@ -1,16 +1,32 @@
 #include <numbers>
+#include <vector>
+#include <complex>
 #include "utils.h"
 
-/*=====================================================================*/
 double deg2rad(double deg) {
 // Returns input deg value in radians.
 	return deg / 360 * 2 * std::numbers::pi;
 }
-/*=====================================================================*/
+
 double rad2deg(double rad) {
 // Returns input deg value in radians.
 	return rad * 360 / (2 * std::numbers::pi) ;
 }
+
+void cvector_to_fftw(int nt, std::vector<std::complex<double>> in, fftw_complex* out) {
+	// Convert complex vector to fftw vector
+	for (int j=0; j<nt; j++) {
+		out[j][0] = in[j].real();
+		out[j][1] = in[j].imag();
+	}
+}
+void fftw_to_cvector(int nt, fftw_complex* in, std::vector<std::complex<double>> out) {
+	// Convert fftw vector to complex vector
+	for (int j=0; j<nt; j++) {
+		out[j] = std::complex(in[j][0],in[j][1]);
+	}
+}
+
 
 /*
 
@@ -180,207 +196,7 @@ int writeToFile(const char *ofname, double *data1, complex<double> *data2) {
 
 
 /*=====================================================================
-int GenProfile(complex<double> *timeProfile, int profType, double tl, double tt, double xcm2, double EJ, double fw, double tCoh, double cpp1, double cpp2, double cpd1, double cpd2) {
-// This function generates a skewed gaussian or sech2 profile
-// Adds background, noise and chirp if needed.
-	switch (profType) {
-		case 0: {
-		// Reading profile from file (only for signal)
-		// Requires a file with wavelengths (nm) and spectrum data
-			const char* file = "rspec.txt";
-			double maxx = 0;
-			double number;
-			double *intpSpec, *spec_read, *lamb_read;
-			vector<double>* spectrum;
-			vector<double>* lambdas;
-			//double *lamb_read = &(lambdas[0]);
-			//double* spec_read = &spectrum[0];
-			spectrum = new vector<double>();
-			lambdas = new vector<double>();
-			intpSpec = new double[nt];
-			int sizeRead;
-			ifstream filestr;
-			string line;
-			filestr.open (file, fstream::in);
-			if(filestr.is_open()) {
-				while(!filestr.eof()) {
-					getline(filestr,line);
-					stringstream input(line);
-					input >> number;
-					lambdas->push_back(number);
-					//cout << "elso" << number << endl;
-					input >> number;
-					// 700 is background now FIXME
-					spectrum->push_back(number-700);
-					//cout << "masodik" << number << endl;
-				}
-				cout << lambdas->size() << " elements were read from spectrum file." << endl;
-				//reverse(lambdas->begin(),lambdas->end()); 
-				//reverse(spectrum->begin(),spectrum->end());
-				sizeRead = lambdas->size();
-				spec_read = new double[sizeRead];
-				lamb_read = new double[sizeRead];
-				double *lamb_read = &(lambdas->at(0));
-				double *spec_read = &(spectrum->at(0));
-			// Little correction for interpolation outside limits
-				if (lamb_read[0]>sLam1)
-					lamb_read[0] = sLam1;
-				if (lamb_read[sizeRead-1]<sLam2)
-					lamb_read[sizeRead-1] = sLam2;
-			// Interpolating read data to make it equidistant in freq.
-				gsl_interp_accel *acc = gsl_interp_accel_alloc();
-				gsl_spline *spline = gsl_spline_alloc(gsl_interp_linear,sizeRead);
-				gsl_spline_init (spline, lamb_read, spec_read, sizeRead);
-				for (j=0;j<nt;j++) {
-					intpSpec[j] = gsl_spline_eval(spline,sLambdaj[nt-1-j],acc);
-				}
-			// It needs to be flipped in order to get the sequence right (low freqs first)
-				double *buffer;
-				buffer = new double[nt];
-				for (j=0;j<nt;j++) {
-					//intpSpec[j] = gsl_spline_eval(spline,sLambdaj[nt-1-j],acc);
-					intpSpec[j] = gsl_spline_eval(spline,sLambdaj[nt-1-j],acc);
-					buffer[j] = sqrt(intpSpec[j]); // FIXME: sqrt for electric field - Check!
-				}
-				for (j=0;j<nt;j++) {
-					intpSpec[j] = buffer[nt-1-j];				
-				}
-				delete buffer;				
-				gsl_spline_free(spline);
-				gsl_interp_accel_free(acc);
-			// Fourier transformation of data
-				fftw_plan p0 = fftw_plan_dft_r2c_1d(nt,intpSpec,reinterpret_cast<fftw_complex*>(timeProfile), FFTW_ESTIMATE);
-				fftw_execute(p0);
-			// Creating full length of pulse
-				double *rea;
-				double *ima;
-				rea = new double[nt/2+1];
-				ima = new double[nt/2+1];
-				for(j=0;j<(nt/2+1);j++) {
-					rea[j] = real(timeProfile[j]);
-					ima[j] = imag(timeProfile[j]);
-				}
-				for(j=0;j<nt;j++) {
-					real(timeProfile[j]) = rea[abs(j-nt/2)];
-					if (j<nt/2) { // Check for shift and change to nt/2+1 if necessary..
-						imag(timeProfile[j]) = ima[abs(j-nt/2)];
-					}
-					else {
-						imag(timeProfile[j]) = -ima[abs(j-nt/2)]; // because it only gives back half, and imag part has to be asymmetric
-					}
-				}
-				delete rea;
-				delete ima;
-				for(j=0;j<nt;j++) {
-					absTP[j] = pow(abs(timeProfile[j]),2); // This is the 2nd power of the electric field profile in time 
-				}
-			// Normalise
-				maxx = FindMax(absTP, nt);
-				for(j=0;j<nt;j++) {
-					absTP[j] = absTP[j]/maxx;
-				}
-			}
-			else
-				errorhl(9);
-			filestr.close();
-			break;
-		}
-		
-		case 1: 
-		// Gaussian temporal intensity profile		
-			for(j=0;j<nt/2;j++) { // Modified original code here to get overlapping profiles (dtps*j instead of j+1)
-				absTP[j] = small+exp(-(log(2)*pow(((dtps*(j)-tlead)/tl),2)));
-			}
-			for(j=nt/2;j<nt;j++) {
-				absTP[j] = small+exp(-(log(2)*pow(((dtps*(j)-tlead)/tt),2)));
-			}
-			break;
-		case 2:
-		// Sech squared temporal intensity profile
-			for(j=0;j<nt/2;j++) {
-				absTP[j] = small+pow(2/(exp(-(dtps*(j+1)-tlead)/tl)+1/exp(-(dtps*(j+1)-tlead)/tl)),2);
-			}
-			for(j=nt/2;j<nt;j++) {
-				absTP[j] = small+pow(2/(exp(-(dtps*(j+1)-tlead)/tt)+1/exp(-(dtps*(j+1)-tlead)/tt)),2);
-			}
-			break;
-	}
-// Basic intensity profile formed in time -> absTP
-// Next: Power scaling
-	double max=0;
-	double act_EJ;
-	act_EJ = rInt(absTP);
-	for (j=0;j<nt;j++) {
-		absTP[j] = (EJ*absTP[j]/act_EJ);
-	}
-	max = FindMax(absTP, nt);
-//	cout << EJ/act_EJ << " " << EJ << " " << act_EJ <<  endl;
-//	exit(0);
-	act_EJ = rInt(absTP);
-	cout << "First energy check: Needed:" << EJ*1e3 << "mJ -> Actual:" << act_EJ*1e3 << "mJ" << endl;
-// Complex field profile has to be scaled as well
-	if (profType==0) {
-	// In case spectrum is read - use only for signal
-		double act_EJ2 = cInt(timeProfile, fw);
-		for (j=0;j<nt;j++) {
-			(timeProfile[j]) = (timeProfile[j])*sqrt(EJ/act_EJ2);
-		}
-	}
-	else {
-	// For simulated profiles
-		for (j=0;j<nt;j++) {
-			//timeProfile[j] = polar(sqrt((absTP[j]/fw)),0.0);
-			real(timeProfile[j]) = sqrt(absTP[j]/fw);
-		}
-	}
-//	cout << timeProfile[1] << " " << fw <<  endl;
-	double act_EJ3 = cInt(timeProfile, fw);
-//	cout << absTP[nt/2] << " " << timeProfile[nt/2] << " " << fw*dtps*1e-12 << " " << act_EJ3/(fw*dtps*1e-12) << endl;
-//	exit(0);
-	cout << "Second energy check: Needed:" << EJ*1e3 << "mJ -> Actual:" << act_EJ3*1e3 << "mJ" << endl;
-// Noisy pulse - not background noise - Not tested
-	if (tCoh!=0) {
-		errorhl(11);
-		tCoh=50;
-		double fspec;
-		complex<double> *cva;
-		cva = new complex<double>[nt];
-		fspec=dw*dw*tCoh*tCoh/(8*log(2));
-		cva=noise(cva,profType,nt,fspec);
-		for (j=0;j<nt;j++) {
-			imag(timeProfile[j])=imag(timeProfile[j])*imag(cva[j])/(abs(cva[j])+1e-20);
-			cout << cva[j] << endl;
-		}
-	}
-// Chirping procedure
-	if(chirpType==1) {
-		if (cpp1!=0 || cpp2!=0) {
-		// In this chirping procedure the spectral bandwidth is unchanged
-		// - pulse duration is increased 
-			cout << "Normal chirping procedure" << endl;
-			chirper_norm(timeProfile, profType, nt, cpp1, cpp2, p);
-			double act_EJ4 = cInt(timeProfile, fw);
-			cout << "Energy check after chirping: Needed:" << EJ*1e3 << "mJ -> Actual:" << act_EJ4*1e3 << "mJ" << endl;	
-			// FIXME: need to check why it changes so much - numerical issue??
-			if (EJ!=act_EJ4) {
-				cout << "Inconsistent energies! Correcting..." << endl;
-				for (j=0;j<nt;j++) {
-					timeProfile[j] = polar((abs(timeProfile[j])*sqrt(EJ/act_EJ4)), arg(timeProfile[j]));
-				}
-				double act_EJ5 = cInt(timeProfile, fw);
-				cout << "Energy check again: Needed:" << EJ*1e3 << "mJ -> Actual:" << act_EJ5*1e3 << "mJ" << endl;	
-			}
-		}
-	}
-	else {
-		if (cpd1!=0 || cpd2!=0) {
-			cout << "\tUsing direct chirp" << endl;
-			chirper_direct(timeProfile, nt, cpd1, cpd2);
-		}
-	}
-	fftw_destroy_plan(p);
-// Adding a background will be an option later + noise
-}
+
 /*=====================================================================
 double FindMax(double *vek, int s) {
 // Finds maximum of vector 'vek' of size 's'.

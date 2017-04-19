@@ -7,6 +7,7 @@
 #include <sstream>
 #include <memory>
 #include <vector>
+#include <complex>
 //#include<cstdio>
 
 #include "pulse.h"
@@ -146,17 +147,17 @@ int main(int argc, char *argv[]) {
 	/*=====================================================================*/
 	// Set up stage parameters.
 
-	auto stage1 = std::make_unique<Crystal>(cryst1, thdeg1, 1, noStep1, crysLth1);
-    auto stage2 = std::make_unique<Crystal>(cryst2, thdeg2, 2, noStep2, crysLth2);
-    auto stage3 = std::make_unique<Crystal>(cryst3, thdeg3, 3, noStep3, crysLth3);
+	auto stage1 = std::make_unique<Crystal>(cryst1, thdeg1, 1, noStep1, crysLth1, Xcm2_1, true);
+    auto stage2 = std::make_unique<Crystal>(cryst2, thdeg2, 2, noStep2, crysLth2, Xcm2_2, false);
+    auto stage3 = std::make_unique<Crystal>(cryst3, thdeg3, 3, noStep3, crysLth3, Xcm2_3, false);
 
 	/*=====================================================================*/
 	// Create pulses
-	auto Pump1 = std::make_unique<Pulse>(dtPumpL1, dtPumpT1, pEJ1, Xcm2_1);
-	auto Pump2 = std::make_unique<Pulse>(dtPumpL2, dtPumpT2, pEJ2, Xcm2_2);
-	auto Pump3 = std::make_unique<Pulse>(dtPumpL3, dtPumpT3, pEJ3, Xcm2_3);
-	auto Signal1 = std::make_unique<Pulse>(dtSigL1, dtSigT1, sEJ1, Xcm2_1);
-	auto Idler1 = std::make_unique<Pulse>(dtIdlL1, dtIdlT1, iEJ1, Xcm2_1);
+	auto Pump1 = std::make_unique<Pulse>(dtPumpL1, dtPumpT1, pEJ1, Xcm2_1, pProf);
+	auto Pump2 = std::make_unique<Pulse>(dtPumpL2, dtPumpT2, pEJ2, Xcm2_2, pProf);
+	auto Pump3 = std::make_unique<Pulse>(dtPumpL3, dtPumpT3, pEJ3, Xcm2_3, pProf);
+	auto Signal1 = std::make_unique<Pulse>(dtSigL1, dtSigT1, sEJ1, Xcm2_1, sProf);
+	auto Idler1 = std::make_unique<Pulse>(dtIdlL1, dtIdlT1, iEJ1, Xcm2_1, iProf);
 
 	/*=====================================================================*/
 	// Calculate idler wavelength and angular frequencies.
@@ -235,9 +236,9 @@ int main(int argc, char *argv[]) {
 
 	double dk_grid = 1e9 * dw / PhysicalConstants::c0; // in microns
 	double kvPumj, kvSigj, kvIdlj;
-	std::vector<double> pLambdaj(nt);
-	std::vector<double> sLambdaj(nt);
-	std::vector<double> iLambdaj(nt);
+	Signal1->m_lambdaj = std::vector<double>(nt);
+	Pump1->m_lambdaj = std::vector<double>(nt);
+	Idler1->m_lambdaj = std::vector<double>(nt);
 	std::vector<double> nPumj(nt);
 	std::vector<double> nSigj(nt);
 	std::vector<double> nIdlj(nt);
@@ -250,13 +251,13 @@ int main(int argc, char *argv[]) {
 		kvSigj = 2 * std::numbers::pi * 1e3 / Signal1->m_lam2 + j * dk_grid;
 		kvIdlj = 2 * std::numbers::pi * 1e3 / Idler1->m_lam1 - j * dk_grid; // FIX: it fixes idler issue(?)
 		if (kvIdlj<0) kvIdlj = 0.1;
-		pLambdaj[j] = 2 * std::numbers::pi * 1e3 / kvPumj; // nm
-		sLambdaj[j] = 2 * std::numbers::pi * 1e3 / kvSigj;
-		iLambdaj[j] = 2 * std::numbers::pi * 1e3 / kvIdlj; // going backwards
-		nPumj[j] = stage1->calcPumCo(pLambdaj[j]);
-		nPumj[j] = nPumj[j] * stage1->calcRefInd(pLambdaj[j], 2);
-		nSigj[j] = stage1->calcRefInd(sLambdaj[j], 3);
-		nIdlj[j] = stage1->calcRefInd(iLambdaj[j], 3); // going backwards
+		Pump1->m_lambdaj[j] = 2 * std::numbers::pi * 1e3 / kvPumj; // nm
+		Signal1->m_lambdaj[j] = 2 * std::numbers::pi * 1e3 / kvSigj;
+		Idler1->m_lambdaj[j] = 2 * std::numbers::pi * 1e3 / kvIdlj; // going backwards
+		nPumj[j] = stage1->calcPumCo(Pump1->m_lambdaj[j]);
+		nPumj[j] = nPumj[j] * stage1->calcRefInd(Pump1->m_lambdaj[j], 2);
+		nSigj[j] = stage1->calcRefInd(Signal1->m_lambdaj[j], 3);
+		nIdlj[j] = stage1->calcRefInd(Idler1->m_lambdaj[j], 3); // going backwards
 		phiPumj[j] = -kvPumj * stage1->m_dzcm * nPumj[j];
 		phiSigj[j] = -kvSigj * stage1->m_dzcm * nSigj[j] * std::cos(deg2rad(nColl_deg));
 		double gamsij = kvSigj * nSigj[j] * std::sin(deg2rad(nColl_deg)) / (kvIdlj * nIdlj[j]);
@@ -266,7 +267,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	// TODO: New idler handling, uncomment this section for original idler handling
-	double temp[nt];
+	std::vector<double> temp(nt);
 	for (int j=0; j<nt; j++) {
 		temp[j] = phiIdlj[nt-1-j];
 	}
@@ -280,9 +281,46 @@ int main(int argc, char *argv[]) {
 		nIdlj[j] = temp[j];
 	}
 
-/*=====================================================================*/
+	/*=====================================================================*/
 	double gtdPum, gtdSig, gtdIdl;
-	stage1->setPhaseVel(nt, dw, nPumj, nSigj, nIdlj, &gtdPum, &gtdSig, &gtdIdl);
+	stage1->setPhaseVel(dw, nColl_deg, nPumj, nSigj, nIdlj, &gtdPum, &gtdSig, &gtdIdl);
+	std::vector<std::complex<double>> cPhiPumj, cPhiSigj, cPhiIdlj;
+	stage1->makePhaseRelative(frame, dw, gtdSig, gtdPum, gtdIdl, phiPumj, phiSigj, phiIdlj, cPhiPumj, cPhiSigj, cPhiIdlj);
+
+	/*=====================================================================*/
+	// Create pulses
+	std::cout <<  "\n\n*********************************************";
+	std::cout << "\n\tCreating pulses\n";
+	std::cout << "*********************************************" << std::endl;
+	// PUMP
+	if (Pump1->m_EJ!=0) {
+		std::cout << "\nPump:" << std::endl;
+		if (Pump1->m_prof<1 || Pump1->m_prof>2) {
+			std::cout << "Error: Profile reading from file can only be used for signal pulse in the current version" << std::endl;
+		}
+		double fwp = 0.5 * PhysicalConstants::c0 * PhysicalConstants::eps0 * (stage1->m_nOrdPum * stage1->m_coePum) * stage1->m_xcm2; // Check units if sg is wrong
+		std::vector<std::complex<double>> timeProfPum(nt);
+
+		Pump1->GenProfile(timeProfPum);
+			
+			
+			
+			
+			, dtPumpL, dtPumpT, Xcm2, pEJ, fwp, tcPum, chpPum, chpPum2, chpPumL, chpPumNL);
+		
+		
+		
+		
+		
+		
+		}
+		else {
+			for (j=0;j<nt;j++) {
+				timeProfPum[j] = 0;
+			}
+		}
+		//cout << pow(abs(timeProfPum[nt/2]),2) << " " << fwp << " " << dtps << endl;
+		//exit(0);
 
 }
 

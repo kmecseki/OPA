@@ -1,16 +1,24 @@
 #include <numbers>
 #include <cmath>
 #include <iostream>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <gsl/gsl_spline.h>
+#include <gsl/gsl_interp.h>
+#include <fftw3/fftw3.h>
 #include "pulse.h"
 #include "phys_constants.h"
 #include "utils.h"
 
-Crystal::Crystal(int ctype, int stage, int noStep, double thdeg, double cryslth) : 
-    m_cType(ctype),
+Crystal::Crystal(int ctype, int stage, int noStep, double thdeg, double cryslth, double xcm2, bool first) : 
+    m_firstStage(first),
+	m_cType(ctype),
 	m_stage(stage),
 	m_noStep(noStep),
     m_thdeg(thdeg),
-	m_cLength(cryslth) 
+	m_cLength(cryslth),
+	m_xcm2(xcm2)
     {	
         m_xeff = calc_xeff();
 		m_dzcm = m_cLength/((double) noStep);
@@ -131,7 +139,6 @@ double Crystal::calcRefInd(double lambda, int oe) {
 				refInd = sqrt(p1+p2/(lambda*lambda-p3)+p4*lambda*lambda/(lambda*lambda-p5)); */
 				return 0;
 	}
-	
 }
 
 double Crystal::calc_k(double wlpum, double wlsig, double wlidl) {
@@ -182,8 +189,9 @@ void Crystal::calc_PM(double nColl_deg, double gamma_rad, bool perfectpm) {
 	// We could end the scan loop here.
 }
 
-void Crystal::setPhaseVel(int nt, double dw, std::vector<double> nPumj, std::vector<double> nSigj, std::vector<double> nIdlj, double *gtdPum, double *gtdSig, double *gtdIdl) {
+void Crystal::setPhaseVel(double dw, double nColl_deg, std::vector<double> nPumj, std::vector<double> nSigj, std::vector<double> nIdlj, double *gtdPum, double *gtdSig, double *gtdIdl) {
 	// Phase velocities
+	int nt = nPumj.size();
 	double phasVelPum = PhysicalConstants::c0 * 1e2 / nPumj[nt/2]; // cm/sec
 	double phasVelSig = PhysicalConstants::c0 * 1e2 / nSigj[nt/2];
 	double phasVelIdl = PhysicalConstants::c0 * 1e2 / nIdlj[nt/2-1]; // FIX: Uncomment for ori handling
@@ -193,7 +201,7 @@ void Crystal::setPhaseVel(int nt, double dw, std::vector<double> nPumj, std::vec
 	double phasdtSig = m_cLength * 1e12 / phasVelSig;
 	double phasdtIdl = m_cLength * 1e12 / phasVelIdl;
 	// Group velocities
-	double gVelPum = PhysicalConstants::c0 * 1e2 / (nPumj[nt/2] + m_kPum / m_nOrdPum * PhysicalConstants::c0 *(nPumj[nt/2+1] - nPumj[nt/2-1]) / (2.0  *dw * 1e9)); // cm/s
+	double gVelPum = PhysicalConstants::c0 * 1e2 / (nPumj[nt/2] + m_kPum / m_nOrdPum * PhysicalConstants::c0 *(nPumj[nt/2+1] - nPumj[nt/2-1]) / (2.0 * dw * 1e9)); // cm/s
 	double gVelSig = PhysicalConstants::c0 * 1e2 / (nSigj[nt/2] + m_kSig / m_nOrdSig * PhysicalConstants::c0 *(nSigj[nt/2+1] - nSigj[nt/2-1]) / (2.0 * dw * 1e9));
 	double gVelIdl = PhysicalConstants::c0 * 1e2 / (nIdlj[nt/2] + m_kIdl / m_nOrdIdl * PhysicalConstants::c0 *(nIdlj[nt/2+1] - nIdlj[nt/2-1]) / (2.0 * dw * 1e9)); // Original idler handling is in use
 	//gVelIdl = c*1e2/(nIdlj[nt/2]+kIdl/nOrdIdl*c*(nIdlj[nt/2-1]-nIdlj[nt/2+1])/(2.0*dw*1e9)); // If new idler handling is in use
@@ -233,13 +241,90 @@ void Crystal::setPhaseVel(int nt, double dw, std::vector<double> nPumj, std::vec
 	std::cout << " Phase matching angle: " << m_pAng << std::endl;
 	std::cout << " Angle of propagation: " << m_thdeg << std::endl;
 	std::cout << " Coherence length: " << m_cohL << " um" << std::endl;
+
+	// Calculate at which angle k vector triangle closes properly	
+	if (nColl_deg!=0) {
+		std::cout << "Non collinear geometry" << std::endl;
+		double z, alp;
+		z = (std::pow(m_knPum,2) - std::pow(m_kIdl,2) + std::pow(m_kSig,2)) / (2 * m_knPum * m_kSig);
+		if (z<=1) {
+			alp = rad2deg(std::acos(z));
+			std::cout << " k vector triangle closes @ alpha =" << alp << " degs" << std::endl;
+		}
+		else {
+			alp = 0;
+			std::cout << "Error: k vector triangle will not close for this theta!" << std::endl;
+			exit(0);
+		}
+		// Calculated beta from Ross(15)		
+		if (gVelSig/gVelIdl>=1) 
+			std::cout << "No bandwidth optimised alpha exists" << std::endl;
+		else {
+			double beta2, alpha2, alpha3, nPumOpt, theOpt;
+			beta2 = std::acos(gVelSig / gVelIdl);
+			// From Ross(16) - good approx to the optimal noncoll angle, it will
+			// coincide with alpha at optimal phase matching
+			alpha2 = rad2deg(std::asin(m_kIdl/m_knPum) * std::sin(beta2));
+			// Calculated from Geoff's formula, preferable to Ross(16), as it
+			// does not depend on knPum, which is weakly dependent on theta
+			alpha3 = std::atan(std::sin(beta2) / (m_kSig / m_kIdl + std::cos(beta2)));
+			// Using Ross(16) backwards to get optimum pump refractive index
+			nPumOpt = m_kIdl * std::sin(beta2) / (m_kPum / m_nOrdPum * std::sin(alpha3));
+			theOpt = rad2deg(std::asin(std::sqrt((std::pow(m_nOrdPum / nPumOpt,2) - 1) / (std::pow(m_nOrdPum / m_xOrdPum,2) - 1))));
+			std::cout << "Optimal alpha: " << rad2deg(alpha3) << "\t Optimal theta: " << theOpt << std::endl;
+			std::cout << "Actual alpha: " << nColl_deg << "\t Actual theta: " << m_thdeg << std::endl;
+			}
+		}
+		else std::cout << "Collinear geometry" << std::endl;
+		//if (mode!=1) exit(0); Legacy
 }
 
-Pulse::Pulse(double dtL, double dtT, double EJ, double Xcm2) :
+void Crystal::makePhaseRelative(const int frame, const double dw, const double gtdSig, const double gtdPum, const double gtdIdl, std::vector<double> phiPumj, std::vector<double> phiSigj, std::vector<double> phiIdlj, std::vector<std::complex<double>> cPhiPumj, std::vector<std::complex<double>> cPhiSigj, std::vector<std::complex<double>> cPhiIdlj) {
+	// Local time frame selection
+	// negative sign because of: gtd = -d(phi)/domega to ensure spatial phase of form exp(-ikz)
+	int nt = phiPumj.size();
+	double dphm;
+	switch (frame) {
+		case 1:
+			dphm = -dw * gtdSig;
+			break;
+		case 2:
+			dphm = -dw * (gtdSig + gtdPum) / 2;
+			break;
+		case 3:
+			dphm = -dw * gtdPum;
+			break;
+		default:
+			std::cout << "Error: iframe value can be only 1,2 or 3" << std::endl;
+	}
+	double phiPumjh = phiPumj[nt/2];
+	double phiSigjh = phiSigj[nt/2];
+	double phiIdljh = phiIdlj[nt/2];
+	// Remove central phases and phase gradients
+	using namespace std::complex_literals;
+	for (int j=0; j<nt; j++) {
+		phiPumj[j] = phiPumj[j] * 1e4 - (j - nt / 2) * dphm * 1e3 - phiPumjh * 1e4;
+		phiSigj[j] = phiSigj[j] * 1e4 - (j - nt / 2) * dphm * 1e3 - phiSigjh * 1e4;
+		phiIdlj[j] = phiIdlj[j] * 1e4 - (j - nt / 2) * dphm * 1e3 - phiIdljh * 1e4;
+		cPhiPumj[j] = std::polar(1.0, phiPumj[j]); // TODO: add this to pulse class
+		cPhiSigj[j] = std::polar(1.0, phiSigj[j]);
+		cPhiIdlj[j] = std::exp(1i * phiIdlj[j]); //does the same, as it should tested
+	}
+	// TODO: attempt to zero pump, but it is not used anywhere. removed for now.
+	//m_cPum = 0;
+	//if (m_firstStage) {
+	//	m_cSig = 0;
+	//	m_cIdl = 0;
+	//	}
+}
+
+
+Pulse::Pulse(double dtL, double dtT, double EJ, double Xcm2, int prof) :
     m_dtL(dtL),
 	m_dtT(dtT),
 	m_EJ(EJ),
-	m_Xcm2(Xcm2)
+	m_Xcm2(Xcm2),
+	m_prof(prof)
 	{}
 
 double Pulse::calc_omega0() {
@@ -252,3 +337,212 @@ void Pulse::calc_limits(int nt, double dw) {
 	m_lam2 = 2 * std::numbers::pi * PhysicalConstants::c0 * 1e-6 / ( m_omega0 - nt / 2 * dw);	   
 }
 
+void Pulse::GenProfile(std::vector<std::complex<double>> timeProfile) {
+	//(complex<double> *timeProfile, int profType, double tl, double tt, double xcm2, double EJ, double fw, double tCoh, double cpp1, double cpp2, double cpd1, double cpd2) {
+	// This function generates a skewed gaussian or sech2 profile (skewed in time or spec)
+	// Adds background, noise and chirp if needed.
+	switch (m_prof) {
+		case 0: {
+		// Reading profile from file (only for signal!)
+		// Requires a file with wavelengths (nm) and spectrum data
+
+				double *intpSpec, *spec_read, *lamb_read;
+		std::vector<double> spectrum;
+		std::vector<double> lambdas;
+				//double *lamb_read = &(lambdas[0]);
+				//double* spec_read = &spectrum[0];
+
+		const char* file = "rspec.txt";
+		std::ifstream filestr;
+		//std::string line;
+		double bck = 700; // TODO: Hardcoded for now as bck is always the same on OceanOptics sp I have.
+		filestr.open (file, std::fstream::in);
+		if(filestr.is_open()) {
+			double lambda, intens;
+			while(filestr >> lambda >> intens) {
+				lambdas.push_back(lambda);
+				spectrum.push_back(intens-bck);
+			}
+		filestr.close();
+		}
+		std::cout << lambdas.size() << " elements were read from spectrum file." << std::endl;
+		//reverse(lambdas->begin(),lambdas->end()); 
+		//reverse(spectrum->begin(),spectrum->end());
+		int NT = lambdas.size();
+
+		//		spec_read = new double[NT];
+		//		lamb_read = new double[NT];
+		//		double *lamb_read = &(lambdas->at(0));
+		//		double *spec_read = &(spectrum->at(0));
+		// Little correction for interpolation outside limits
+		if (lamb_read[0]>m_lam1);
+			lamb_read[0] = m_lam1;
+		if (lamb_read[NT-1]<m_lam2)
+			lamb_read[NT-1] = m_lam2;
+		// Interpolating read data to make it equidistant in freq.
+		gsl_interp_accel *acc = gsl_interp_accel_alloc();
+		gsl_spline *spline = gsl_spline_alloc(gsl_interp_linear, NT);
+		gsl_spline_init(spline, lamb_read, spec_read, NT);
+		int nt = timeProfile.size();
+		for (int j=0; j<nt; j++) {
+			intpSpec[j] = gsl_spline_eval(spline,m_lambdaj[nt - 1 - j], acc);
+		}
+		// It needs to be flipped in order to get the sequence right (low freqs first)
+		double *buffer;
+		buffer = new double[nt];
+		std::vector<double> intpSpec;
+		for (int j=0; j<nt; j++) {
+			//intpSpec[j] = gsl_spline_eval(spline,sLambdaj[nt-1-j],acc);
+			intpSpec[j] = gsl_spline_eval(spline, m_lambdaj[nt - 1 - j], acc);
+			buffer[j] = std::sqrt(intpSpec[j]); // FIXME: sqrt for electric field - Check!
+		}
+		for (int j=0; j<nt; j++) {
+			intpSpec[j] = buffer[nt-1-j];				
+		}
+		delete buffer;				
+		gsl_spline_free(spline);
+		gsl_interp_accel_free(acc);
+
+		// Fourier transformation of data
+		fftw_complex *temp = new fftw_complex[nt];
+		cvector_to_fftw(nt, timeProfile, temp);
+		fftw_plan p0 = fftw_plan_dft_r2c_1d(nt, intpSpec, temp, FFTW_ESTIMATE);
+		fftw_execute(p0);
+		fftw_to_cvector(nt, temp, timeProfile);
+		delete temp;
+		
+		
+		
+			// Creating full length of pulse
+			//	double *rea;
+			//	double *ima;
+			//	rea = new double[nt/2+1];
+			//	ima = new double[nt/2+1];
+			//	for(j=0;j<(nt/2+1);j++) {
+			//		rea[j] = real(timeProfile[j]);
+			//		ima[j] = imag(timeProfile[j]);
+			//	}
+		for(int j=0; j<nt; j++) {
+			real(timeProfile[j]) = rea[std::abs(j - nt / 2)];
+			if (j<nt/2) { // Check for shift and change to nt/2+1 if necessary..
+				imag(timeProfile[j]) = ima[abs(j-nt/2)];
+			}
+			else {
+				imag(timeProfile[j]) = -ima[abs(j-nt/2)]; // because it only gives back half, and imag part has to be asymmetric
+			}
+		}
+				delete rea;
+				delete ima;
+				for(j=0;j<nt;j++) {
+					absTP[j] = pow(abs(timeProfile[j]),2); // This is the 2nd power of the electric field profile in time 
+				}
+			// Normalise
+				double maxx = FindMax(absTP, nt);
+				for(j=0;j<nt;j++) {
+					absTP[j] = absTP[j]/maxx;
+				}
+			}
+			else
+				errorhl(9);
+			filestr.close();
+			break;
+		}
+		
+		case 1: 
+		// Gaussian temporal intensity profile		
+			for(j=0;j<nt/2;j++) { // Modified original code here to get overlapping profiles (dtps*j instead of j+1)
+				absTP[j] = small+exp(-(log(2)*pow(((dtps*(j)-tlead)/tl),2)));
+			}
+			for(j=nt/2;j<nt;j++) {
+				absTP[j] = small+exp(-(log(2)*pow(((dtps*(j)-tlead)/tt),2)));
+			}
+			break;
+		case 2:
+		// Sech squared temporal intensity profile
+			for(j=0;j<nt/2;j++) {
+				absTP[j] = small+pow(2/(exp(-(dtps*(j+1)-tlead)/tl)+1/exp(-(dtps*(j+1)-tlead)/tl)),2);
+			}
+			for(j=nt/2;j<nt;j++) {
+				absTP[j] = small+pow(2/(exp(-(dtps*(j+1)-tlead)/tt)+1/exp(-(dtps*(j+1)-tlead)/tt)),2);
+			}
+			break;
+		default:
+			std::cout << "Unsupported profile type." << std::endl;
+			exit(0);
+	}
+// Basic intensity profile formed in time -> absTP
+// Next: Power scaling
+	double max=0;
+	double act_EJ;
+	act_EJ = rInt(absTP);
+	for (j=0;j<nt;j++) {
+		absTP[j] = (EJ*absTP[j]/act_EJ);
+	}
+	max = FindMax(absTP, nt);
+//	cout << EJ/act_EJ << " " << EJ << " " << act_EJ <<  endl;
+//	exit(0);
+	act_EJ = rInt(absTP);
+	cout << "First energy check: Needed:" << EJ*1e3 << "mJ -> Actual:" << act_EJ*1e3 << "mJ" << endl;
+// Complex field profile has to be scaled as well
+	if (profType==0) {
+	// In case spectrum is read - use only for signal
+		double act_EJ2 = cInt(timeProfile, fw);
+		for (j=0;j<nt;j++) {
+			(timeProfile[j]) = (timeProfile[j])*sqrt(EJ/act_EJ2);
+		}
+	}
+	else {
+	// For simulated profiles
+		for (j=0;j<nt;j++) {
+			//timeProfile[j] = polar(sqrt((absTP[j]/fw)),0.0);
+			real(timeProfile[j]) = sqrt(absTP[j]/fw);
+		}
+	}
+//	cout << timeProfile[1] << " " << fw <<  endl;
+	double act_EJ3 = cInt(timeProfile, fw);
+//	cout << absTP[nt/2] << " " << timeProfile[nt/2] << " " << fw*dtps*1e-12 << " " << act_EJ3/(fw*dtps*1e-12) << endl;
+//	exit(0);
+	cout << "Second energy check: Needed:" << EJ*1e3 << "mJ -> Actual:" << act_EJ3*1e3 << "mJ" << endl;
+// Noisy pulse - not background noise - Not tested
+	if (tCoh!=0) {
+		errorhl(11);
+		tCoh=50;
+		double fspec;
+		complex<double> *cva;
+		cva = new complex<double>[nt];
+		fspec=dw*dw*tCoh*tCoh/(8*log(2));
+		cva=noise(cva,profType,nt,fspec);
+		for (j=0;j<nt;j++) {
+			imag(timeProfile[j])=imag(timeProfile[j])*imag(cva[j])/(abs(cva[j])+1e-20);
+			cout << cva[j] << endl;
+		}
+	}
+// Chirping procedure
+	if(chirpType==1) {
+		if (cpp1!=0 || cpp2!=0) {
+		// In this chirping procedure the spectral bandwidth is unchanged
+		// - pulse duration is increased 
+			cout << "Normal chirping procedure" << endl;
+			chirper_norm(timeProfile, profType, nt, cpp1, cpp2, p);
+			double act_EJ4 = cInt(timeProfile, fw);
+			cout << "Energy check after chirping: Needed:" << EJ*1e3 << "mJ -> Actual:" << act_EJ4*1e3 << "mJ" << endl;	
+			// FIXME: need to check why it changes so much - numerical issue??
+			if (EJ!=act_EJ4) {
+				cout << "Inconsistent energies! Correcting..." << endl;
+				for (j=0;j<nt;j++) {
+					timeProfile[j] = polar((abs(timeProfile[j])*sqrt(EJ/act_EJ4)), arg(timeProfile[j]));
+				}
+				double act_EJ5 = cInt(timeProfile, fw);
+				cout << "Energy check again: Needed:" << EJ*1e3 << "mJ -> Actual:" << act_EJ5*1e3 << "mJ" << endl;	
+			}
+		}
+	}
+	else {
+		if (cpd1!=0 || cpd2!=0) {
+			cout << "\tUsing direct chirp" << endl;
+			chirper_direct(timeProfile, nt, cpd1, cpd2);
+		}
+	}
+	fftw_destroy_plan(p);
+// Adding a background will be an option later + noise
+}
