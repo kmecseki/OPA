@@ -1,4 +1,5 @@
 #include <numbers>
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <fstream>
@@ -319,12 +320,13 @@ void Crystal::makePhaseRelative(const int frame, const double dw, const double g
 }
 
 
-Pulse::Pulse(double dtL, double dtT, double EJ, double Xcm2, int prof) :
+Pulse::Pulse(double dtL, double dtT, double EJ, double Xcm2, int prof, int nt) :
     m_dtL(dtL),
 	m_dtT(dtT),
 	m_EJ(EJ),
 	m_Xcm2(Xcm2),
-	m_prof(prof)
+	m_prof(prof),
+	m_nt(nt)
 	{}
 
 double Pulse::calc_omega0() {
@@ -337,126 +339,114 @@ void Pulse::calc_limits(int nt, double dw) {
 	m_lam2 = 2 * std::numbers::pi * PhysicalConstants::c0 * 1e-6 / ( m_omega0 - nt / 2 * dw);	   
 }
 
-void Pulse::GenProfile(std::vector<std::complex<double>> timeProfile) {
+void Pulse::GenProfile(Crystal &stage, double dtps, double tlead) {
 	//(complex<double> *timeProfile, int profType, double tl, double tt, double xcm2, double EJ, double fw, double tCoh, double cpp1, double cpp2, double cpd1, double cpd2) {
 	// This function generates a skewed gaussian or sech2 profile (skewed in time or spec)
 	// Adds background, noise and chirp if needed.
+	int nt = m_ctimeProf.size();
 	switch (m_prof) {
 		case 0: {
-		// Reading profile from file (only for signal!)
-		// Requires a file with wavelengths (nm) and spectrum data
-
-				double *intpSpec, *spec_read, *lamb_read;
-		std::vector<double> spectrum;
-		std::vector<double> lambdas;
-				//double *lamb_read = &(lambdas[0]);
-				//double* spec_read = &spectrum[0];
-
-		const char* file = "rspec.txt";
-		std::ifstream filestr;
-		//std::string line;
-		double bck = 700; // TODO: Hardcoded for now as bck is always the same on OceanOptics sp I have.
-		filestr.open (file, std::fstream::in);
-		if(filestr.is_open()) {
-			double lambda, intens;
-			while(filestr >> lambda >> intens) {
-				lambdas.push_back(lambda);
-				spectrum.push_back(intens-bck);
-			}
-		filestr.close();
-		}
-		std::cout << lambdas.size() << " elements were read from spectrum file." << std::endl;
-		//reverse(lambdas->begin(),lambdas->end()); 
-		//reverse(spectrum->begin(),spectrum->end());
-		int NT = lambdas.size();
-
-		//		spec_read = new double[NT];
-		//		lamb_read = new double[NT];
-		//		double *lamb_read = &(lambdas->at(0));
-		//		double *spec_read = &(spectrum->at(0));
-		// Little correction for interpolation outside limits
-		if (lamb_read[0]>m_lam1);
-			lamb_read[0] = m_lam1;
-		if (lamb_read[NT-1]<m_lam2)
-			lamb_read[NT-1] = m_lam2;
-		// Interpolating read data to make it equidistant in freq.
-		gsl_interp_accel *acc = gsl_interp_accel_alloc();
-		gsl_spline *spline = gsl_spline_alloc(gsl_interp_linear, NT);
-		gsl_spline_init(spline, lamb_read, spec_read, NT);
-		int nt = timeProfile.size();
-		for (int j=0; j<nt; j++) {
-			intpSpec[j] = gsl_spline_eval(spline,m_lambdaj[nt - 1 - j], acc);
-		}
-		// It needs to be flipped in order to get the sequence right (low freqs first)
-		double *buffer;
-		buffer = new double[nt];
-		std::vector<double> intpSpec;
-		for (int j=0; j<nt; j++) {
-			//intpSpec[j] = gsl_spline_eval(spline,sLambdaj[nt-1-j],acc);
-			intpSpec[j] = gsl_spline_eval(spline, m_lambdaj[nt - 1 - j], acc);
-			buffer[j] = std::sqrt(intpSpec[j]); // FIXME: sqrt for electric field - Check!
-		}
-		for (int j=0; j<nt; j++) {
-			intpSpec[j] = buffer[nt-1-j];				
-		}
-		delete buffer;				
-		gsl_spline_free(spline);
-		gsl_interp_accel_free(acc);
-
-		// Fourier transformation of data
-		fftw_complex *temp = new fftw_complex[nt];
-		cvector_to_fftw(nt, timeProfile, temp);
-		fftw_plan p0 = fftw_plan_dft_r2c_1d(nt, intpSpec, temp, FFTW_ESTIMATE);
-		fftw_execute(p0);
-		fftw_to_cvector(nt, temp, timeProfile);
-		delete temp;
-		
-		
-		
-			// Creating full length of pulse
-			//	double *rea;
-			//	double *ima;
-			//	rea = new double[nt/2+1];
-			//	ima = new double[nt/2+1];
-			//	for(j=0;j<(nt/2+1);j++) {
-			//		rea[j] = real(timeProfile[j]);
-			//		ima[j] = imag(timeProfile[j]);
-			//	}
-		for(int j=0; j<nt; j++) {
-			real(timeProfile[j]) = rea[std::abs(j - nt / 2)];
-			if (j<nt/2) { // Check for shift and change to nt/2+1 if necessary..
-				imag(timeProfile[j]) = ima[abs(j-nt/2)];
+			// Reading profile from file (only for signal!)
+			// Requires a file with wavelengths (nm) and spectrum data
+			std::vector<double> spectrum;
+			std::vector<double> lambdas;
+			std::vector<double> intpSpec;
+			const char* file = "rspec.txt";
+			std::ifstream filestr;
+			double bck = 700; // TODO: Hardcoded for now as bck is always the same on OceanOptics sp I have.
+			filestr.open (file, std::fstream::in);
+			if(filestr.is_open()) {
+				double lambda, intens;
+				while(filestr >> lambda >> intens) {
+					lambdas.push_back(lambda);
+					spectrum.push_back(intens-bck);
+				}
+			filestr.close();
 			}
 			else {
-				imag(timeProfile[j]) = -ima[abs(j-nt/2)]; // because it only gives back half, and imag part has to be asymmetric
+				std::cout << "Error opening signal profile data file." << std::endl;
+				exit(0);
 			}
-		}
-				delete rea;
-				delete ima;
-				for(j=0;j<nt;j++) {
-					absTP[j] = pow(abs(timeProfile[j]),2); // This is the 2nd power of the electric field profile in time 
+			std::cout << lambdas.size() << " elements were read from spectrum file." << std::endl;
+			//reverse(lambdas->begin(),lambdas->end()); 
+			//reverse(spectrum->begin(),spectrum->end());
+			int NT = lambdas.size();
+
+			// Correction for interpolation outside limits
+			if (lambdas[0]>m_lam1);
+				lambdas[0] = m_lam1;
+			if (lambdas[NT-1]<m_lam2)
+				lambdas[NT-1] = m_lam2;
+			// Interpolating read data to make it equidistant in freq.
+			gsl_interp_accel *acc = gsl_interp_accel_alloc();
+			gsl_spline *spline = gsl_spline_alloc(gsl_interp_linear, NT);
+			gsl_spline_init(spline, lambdas.data(), spectrum.data(), NT);
+			for (int j=0; j<nt; j++) {
+				intpSpec.push_back(std::sqrt(gsl_spline_eval(spline,m_lambdaj[nt - 1 - j], acc)));
+			}
+			gsl_spline_free(spline);
+			gsl_interp_accel_free(acc);
+			
+			// Reverse in place to have the frequency in the right order.
+			std::reverse(intpSpec.begin(), intpSpec.end());
+			
+			// Fourier transformation of data
+			fftw_complex *temp = new fftw_complex[nt];
+			cvector_to_fftw(nt, m_ctimeProf, temp);
+			fftw_plan p0 = fftw_plan_dft_r2c_1d(nt, intpSpec.data(), temp, FFTW_ESTIMATE);
+			fftw_execute(p0);
+			fftw_to_cvector(nt, temp, m_ctimeProf);
+			delete temp;
+
+			// Creating full length of pulse
+			double *rea;
+			double *ima;
+			rea = new double[nt/2+1];
+			ima = new double[nt/2+1];
+			for(int j=0; j<(nt/2+1); j++) {
+				rea[j] = std::real(m_ctimeProf[j]);
+				ima[j] = std::imag(m_ctimeProf[j]);
+			}
+			for(int j=0; j<nt; j++) {
+				double R, I;
+				R = rea[std::abs(j - nt / 2)];
+				if (j<nt/2) { // Check for shift and change to nt/2+1 if necessary..
+					I = ima[abs(j - nt / 2)];
 				}
+				else {
+					I = -ima[abs(j - nt / 2)]; // because it only gives back half, and imag part has to be asymmetric
+				}
+				m_ctimeProf[j] = std::complex(R, I);
+			}
+			delete rea;
+			delete ima;
+			double maxx = 0;
+			for (int j=0; j<nt; j++) {
+				// To calculate the 2nd power of the electric field profile in time
+				double number = std::pow(std::abs(m_ctimeProf[j]), 2);
+				if (number>maxx) {
+					maxx = number;
+				}
+				m_absTP.push_back(number);
+
+			}
 			// Normalise
-				double maxx = FindMax(absTP, nt);
-				for(j=0;j<nt;j++) {
-					absTP[j] = absTP[j]/maxx;
-				}
+			for (int j=0; j<nt; j++) {
+				m_absTP[j] = m_absTP[j]/maxx;
 			}
-			else
-				errorhl(9);
-			filestr.close();
 			break;
 		}
 		
 		case 1: 
-		// Gaussian temporal intensity profile		
-			for(j=0;j<nt/2;j++) { // Modified original code here to get overlapping profiles (dtps*j instead of j+1)
-				absTP[j] = small+exp(-(log(2)*pow(((dtps*(j)-tlead)/tl),2)));
+			// Gaussian temporal intensity profile		
+			for(int j=0; j<nt/2; j++) { // Modified original code here to get overlapping profiles (dtps*j instead of j+1)
+				m_absTP.push_back(PhysicalConstants::small + std::exp(-(std::log(2) * std::pow(((dtps * j - tlead) / stage.m_dtPumpL),2)))); // Make sure tl is dtpumpl
 			}
-			for(j=nt/2;j<nt;j++) {
-				absTP[j] = small+exp(-(log(2)*pow(((dtps*(j)-tlead)/tt),2)));
+			for(int j=nt/2; j<nt; j++) {
+				m_absTP.push_back(PhysicalConstants::small + std::exp(-(std::log(2) * std::pow(((dtps*j - tlead) / stage.m_dtPumpT), 2))));
 			}
 			break;
+			
 		case 2:
 		// Sech squared temporal intensity profile
 			for(j=0;j<nt/2;j++) {

@@ -20,7 +20,6 @@ int main(int argc, char *argv[]) {
     std::cout << "OPA program version " << version << std::endl;
 	
 	// Helper constants
-	const double small = 1e-20;
     const int ndim = 524288; // 2**19
     
     /*=====================================================================*/
@@ -153,11 +152,11 @@ int main(int argc, char *argv[]) {
 
 	/*=====================================================================*/
 	// Create pulses
-	auto Pump1 = std::make_unique<Pulse>(dtPumpL1, dtPumpT1, pEJ1, Xcm2_1, pProf);
-	auto Pump2 = std::make_unique<Pulse>(dtPumpL2, dtPumpT2, pEJ2, Xcm2_2, pProf);
-	auto Pump3 = std::make_unique<Pulse>(dtPumpL3, dtPumpT3, pEJ3, Xcm2_3, pProf);
-	auto Signal1 = std::make_unique<Pulse>(dtSigL1, dtSigT1, sEJ1, Xcm2_1, sProf);
-	auto Idler1 = std::make_unique<Pulse>(dtIdlL1, dtIdlT1, iEJ1, Xcm2_1, iProf);
+	auto Pump1 = std::make_unique<Pulse>(dtPumpL1, dtPumpT1, pEJ1, Xcm2_1, pProf, nt);
+	auto Pump2 = std::make_unique<Pulse>(dtPumpL2, dtPumpT2, pEJ2, Xcm2_2, pProf, nt);
+	auto Pump3 = std::make_unique<Pulse>(dtPumpL3, dtPumpT3, pEJ3, Xcm2_3, pProf, nt);
+	auto Signal1 = std::make_unique<Pulse>(dtSigL1, dtSigT1, sEJ1, Xcm2_1, sProf, nt);
+	auto Idler1 = std::make_unique<Pulse>(dtIdlL1, dtIdlT1, iEJ1, Xcm2_1, iProf, nt);
 
 	/*=====================================================================*/
 	// Calculate idler wavelength and angular frequencies.
@@ -299,9 +298,8 @@ int main(int argc, char *argv[]) {
 			std::cout << "Error: Profile reading from file can only be used for signal pulse in the current version" << std::endl;
 		}
 		double fwp = 0.5 * PhysicalConstants::c0 * PhysicalConstants::eps0 * (stage1->m_nOrdPum * stage1->m_coePum) * stage1->m_xcm2; // Check units if sg is wrong
-		std::vector<std::complex<double>> timeProfPum(nt);
 
-		Pump1->GenProfile(timeProfPum);
+		Pump1->GenProfile(stage1, dtps, tlead);
 			
 			
 			

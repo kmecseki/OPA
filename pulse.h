@@ -45,6 +45,7 @@ class Crystal {
 class Pulse {
 	public:
 		int m_prof;
+		int m_nt;
 		double m_dtL;
 		double m_dtT;
 		double m_EJ;
@@ -55,10 +56,12 @@ class Pulse {
 		double m_xOrd;
 		double m_lam1, m_lam2;
 		std::vector<double> m_lambdaj;
-		Pulse(double, double, double, double, int);
+		std::vector<double> m_absTP;
+		std::vector<std::complex<double>> m_ctimeProf;
+		Pulse(double, double, double, double, int, int);
 		double calc_omega0();
 		void calc_limits(int, double);
-		void GenProfile(Crystal&);
+		void GenProfile(Crystal&, double, double);
 		
 
 };
