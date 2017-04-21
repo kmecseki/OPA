@@ -20,6 +20,7 @@ void cvector_to_fftw(int nt, std::vector<std::complex<double>> in, fftw_complex*
 		out[j][1] = in[j].imag();
 	}
 }
+
 void fftw_to_cvector(int nt, fftw_complex* in, std::vector<std::complex<double>> out) {
 	// Convert fftw vector to complex vector
 	for (int j=0; j<nt; j++) {
@@ -218,15 +219,7 @@ double FindMax(complex<double> *cfield, int s) {
 	return maxi;
 }
 /*=====================================================================
-double rInt(double *absTp) {
-// Calculates energy within an intensity profile
-	double area=0;
-	for (j=0;j<nt;j++) {
-		area=area+absTp[j];
-	}
-	area=area*dtps*1e-12;
-	return area;
-}
+
 /*=====================================================================*
 double cInt(complex<double> *cfield, double fww) {
 // Calculates energy within an intensity profile - given complex field

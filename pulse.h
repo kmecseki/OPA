@@ -55,13 +55,16 @@ class Pulse {
 		double m_nOrd;
 		double m_xOrd;
 		double m_lam1, m_lam2;
+		double m_tc;
 		std::vector<double> m_lambdaj;
 		std::vector<double> m_absTP;
 		std::vector<std::complex<double>> m_ctimeProf;
-		Pulse(double, double, double, double, int, int);
+		Pulse(double, double, double, double, double, int, int);
 		double calc_omega0();
 		void calc_limits(int, double);
 		void GenProfile(Crystal&, double, double);
+		double rInt(double dtps);
+		double cInt(std::vector<std::complex<double>>, double, double);
 		
 
 };

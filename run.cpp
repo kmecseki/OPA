@@ -112,18 +112,18 @@ int main(int argc, char *argv[]) {
 	double Xcm2_3 = parsed.at(o++);
 	int frame = (int) parsed.at(o++);
 	int chirpType = (int) parsed.at(o++);
-	double chpSig = parsed.at(o++);
+	double chpSig = parsed.at(o++); // Dispersion values (for option normal in fs2),S-P-I, chirp between stages 2-3 for signal/
 	double chpPum = parsed.at(o++);
 	double chpIdl = parsed.at(o++);
 	double chpSig23 = parsed.at(o++);
-	double chpSig2 = parsed.at(o++);
+	double chpSig2 = parsed.at(o++); // Non-linear dispersion values, for normal chirp, S-P-I, fs3, last one is for st 2-3/
 	double chpPum2 = parsed.at(o++);
 	double chpIdl2 = parsed.at(o++);
 	double chpSig223 = parsed.at(o++);
-	double chpSigL = parsed.at(o++);
+	double chpSigL = parsed.at(o++); // Dispersion values for direct chirp S-P-I GHz per ps/
 	double chpPumL = parsed.at(o++);
 	double chpIdlL = parsed.at(o++);
-	double chpSigNL = parsed.at(o++);
+	double chpSigNL = parsed.at(o++); // Non-linear dispersion values, direct chirp, S-P-I, Ghz/ps/ps/
 	double chpPumNL = parsed.at(o++);
 	double chpIdlNL = parsed.at(o++);
 	double tcPum = parsed.at(o++);
@@ -152,11 +152,11 @@ int main(int argc, char *argv[]) {
 
 	/*=====================================================================*/
 	// Create pulses
-	auto Pump1 = std::make_unique<Pulse>(dtPumpL1, dtPumpT1, pEJ1, Xcm2_1, pProf, nt);
-	auto Pump2 = std::make_unique<Pulse>(dtPumpL2, dtPumpT2, pEJ2, Xcm2_2, pProf, nt);
-	auto Pump3 = std::make_unique<Pulse>(dtPumpL3, dtPumpT3, pEJ3, Xcm2_3, pProf, nt);
-	auto Signal1 = std::make_unique<Pulse>(dtSigL1, dtSigT1, sEJ1, Xcm2_1, sProf, nt);
-	auto Idler1 = std::make_unique<Pulse>(dtIdlL1, dtIdlT1, iEJ1, Xcm2_1, iProf, nt);
+	auto Pump1 = std::make_unique<Pulse>(dtPumpL1, dtPumpT1, pEJ1, Xcm2_1, tcPum, pProf, nt);
+	auto Pump2 = std::make_unique<Pulse>(dtPumpL2, dtPumpT2, pEJ2, Xcm2_2, tcPum, pProf, nt);
+	auto Pump3 = std::make_unique<Pulse>(dtPumpL3, dtPumpT3, pEJ3, Xcm2_3, tcPum, pProf, nt);
+	auto Signal1 = std::make_unique<Pulse>(dtSigL1, dtSigT1, sEJ1, Xcm2_1, tcSig, sProf, nt);
+	auto Idler1 = std::make_unique<Pulse>(dtIdlL1, dtIdlT1, iEJ1, Xcm2_1, tcIdl, iProf, nt);
 
 	/*=====================================================================*/
 	// Calculate idler wavelength and angular frequencies.
@@ -297,9 +297,8 @@ int main(int argc, char *argv[]) {
 		if (Pump1->m_prof<1 || Pump1->m_prof>2) {
 			std::cout << "Error: Profile reading from file can only be used for signal pulse in the current version" << std::endl;
 		}
-		double fwp = 0.5 * PhysicalConstants::c0 * PhysicalConstants::eps0 * (stage1->m_nOrdPum * stage1->m_coePum) * stage1->m_xcm2; // Check units if sg is wrong
-
-		Pump1->GenProfile(stage1, dtps, tlead);
+		// Generate profile, adjust energy, add noise and chirp
+		Pump1->GenProfile(*stage1, dtps, tlead);
 			
 			
 			

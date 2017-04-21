@@ -320,11 +320,12 @@ void Crystal::makePhaseRelative(const int frame, const double dw, const double g
 }
 
 
-Pulse::Pulse(double dtL, double dtT, double EJ, double Xcm2, int prof, int nt) :
+Pulse::Pulse(double dtL, double dtT, double EJ, double Xcm2, double tc, int prof, int nt) :
     m_dtL(dtL),
 	m_dtT(dtT),
 	m_EJ(EJ),
 	m_Xcm2(Xcm2),
+	m_tc(tc),
 	m_prof(prof),
 	m_nt(nt)
 	{}
@@ -337,6 +338,30 @@ double Pulse::calc_omega0() {
 void Pulse::calc_limits(int nt, double dw) {
 	m_lam1 = 2 * std::numbers::pi * PhysicalConstants::c0 * 1e-6 / ( m_omega0 + nt / 2 * dw);
 	m_lam2 = 2 * std::numbers::pi * PhysicalConstants::c0 * 1e-6 / ( m_omega0 - nt / 2 * dw);	   
+}
+
+double Pulse::rInt(double dtps) {
+	// Calculates energy within an intensity profile
+	double area = 0;
+	int nt = m_absTP.size();
+	for (int j=0; j<nt; j++) {
+		area = area + m_absTP[j];
+	}
+	area = area * dtps * 1e-12;
+	return area;
+}
+
+double Pulse::cInt(std::vector<std::complex<double>> cfield, double fww, double dtps) {
+// Calculates energy within an intensity profile - given complex field
+	double area = 0;
+	int nt = cfield.size();
+	std::cout << "cfield size CHECK" << nt << std::endl;
+	for (int j=0; j<nt; j++) {
+		area = area + std::pow(std::abs(cfield[j]), 2);
+	}
+	area = area * dtps * 1e-12 * fww;
+//	cout << "area" << area << endl;
+	return area;
 }
 
 void Pulse::GenProfile(Crystal &stage, double dtps, double tlead) {
@@ -440,7 +465,7 @@ void Pulse::GenProfile(Crystal &stage, double dtps, double tlead) {
 		case 1: 
 			// Gaussian temporal intensity profile		
 			for(int j=0; j<nt/2; j++) { // Modified original code here to get overlapping profiles (dtps*j instead of j+1)
-				m_absTP.push_back(PhysicalConstants::small + std::exp(-(std::log(2) * std::pow(((dtps * j - tlead) / stage.m_dtPumpL),2)))); // Make sure tl is dtpumpl
+				m_absTP.push_back(PhysicalConstants::small + std::exp(-(std::log(2) * std::pow(((dtps * j - tlead) / stage.m_dtPumpL), 2)))); // Make sure tl is dtpumpl
 			}
 			for(int j=nt/2; j<nt; j++) {
 				m_absTP.push_back(PhysicalConstants::small + std::exp(-(std::log(2) * std::pow(((dtps*j - tlead) / stage.m_dtPumpT), 2))));
@@ -449,80 +474,82 @@ void Pulse::GenProfile(Crystal &stage, double dtps, double tlead) {
 			
 		case 2:
 		// Sech squared temporal intensity profile
-			for(j=0;j<nt/2;j++) {
-				absTP[j] = small+pow(2/(exp(-(dtps*(j+1)-tlead)/tl)+1/exp(-(dtps*(j+1)-tlead)/tl)),2);
+			for(int j=0; j<nt/2; j++) {
+				m_absTP.push_back(PhysicalConstants::small + std::pow(2 / (std::exp(-(dtps * (j+1) - tlead) / stage.m_dtPumpL) + 1 / std::exp(-(dtps * (j+1) - tlead) / stage.m_dtPumpT)), 2);
 			}
-			for(j=nt/2;j<nt;j++) {
-				absTP[j] = small+pow(2/(exp(-(dtps*(j+1)-tlead)/tt)+1/exp(-(dtps*(j+1)-tlead)/tt)),2);
+			for(int j=nt/2;j<nt;j++) {
+				m_absTP.push_back(PhysicalConstants::small + std::pow(2 / (std::exp(-(dtps * (j+1) - tlead) / stage.m_dtPumpT) + 1 / std::exp(-(dtps * (j+1) - tlead) / stage.m_dtPumpT)), 2);
 			}
 			break;
+
 		default:
 			std::cout << "Unsupported profile type." << std::endl;
 			exit(0);
 	}
-// Basic intensity profile formed in time -> absTP
-// Next: Power scaling
-	double max=0;
+	// Basic intensity profile formed in time -> absTP
+	// Next: Power scaling
 	double act_EJ;
-	act_EJ = rInt(absTP);
-	for (j=0;j<nt;j++) {
-		absTP[j] = (EJ*absTP[j]/act_EJ);
+	act_EJ = this->rInt(dtps);
+	for (int j=0; j<nt; j++) {
+		m_absTP[j] = (m_EJ * m_absTP[j] / act_EJ);
 	}
-	max = FindMax(absTP, nt);
-//	cout << EJ/act_EJ << " " << EJ << " " << act_EJ <<  endl;
-//	exit(0);
-	act_EJ = rInt(absTP);
-	cout << "First energy check: Needed:" << EJ*1e3 << "mJ -> Actual:" << act_EJ*1e3 << "mJ" << endl;
-// Complex field profile has to be scaled as well
-	if (profType==0) {
-	// In case spectrum is read - use only for signal
-		double act_EJ2 = cInt(timeProfile, fw);
-		for (j=0;j<nt;j++) {
-			(timeProfile[j]) = (timeProfile[j])*sqrt(EJ/act_EJ2);
+	auto max = std::max_element(m_absTP.begin(), m_absTP.end());
+	//	cout << EJ/act_EJ << " " << EJ << " " << act_EJ <<  endl;
+	//	exit(0);
+	act_EJ = this->rInt(dtps);
+	std::cout << "First energy check: Needed:" << m_EJ * 1e3 << "mJ -> Actual:" << act_EJ * 1e3 << "mJ" << std::endl;
+	// Complex field profile has to be scaled as well
+	double fw = 0.5 * PhysicalConstants::c0 * PhysicalConstants::eps0 * (stage.m_nOrdPum * stage.m_coePum) * stage.m_xcm2; // Check units if sg is wrong
+	if (m_prof==0) {
+		// In this case the spectrum is read from file - (only for signal)
+		double act_EJ2 = cInt(m_ctimeProf, fw, dtps);
+		for (int j=0; j<nt; j++) {
+			(m_ctimeProf[j]) = (m_ctimeProf[j]) * sqrt(m_EJ / act_EJ2);
 		}
 	}
 	else {
 	// For simulated profiles
-		for (j=0;j<nt;j++) {
+		for (int j=0; j<nt; j++) {
 			//timeProfile[j] = polar(sqrt((absTP[j]/fw)),0.0);
-			real(timeProfile[j]) = sqrt(absTP[j]/fw);
+			m_ctimeProf[j].real(std::sqrt(m_absTP[j] / fw));
 		}
 	}
-//	cout << timeProfile[1] << " " << fw <<  endl;
-	double act_EJ3 = cInt(timeProfile, fw);
-//	cout << absTP[nt/2] << " " << timeProfile[nt/2] << " " << fw*dtps*1e-12 << " " << act_EJ3/(fw*dtps*1e-12) << endl;
-//	exit(0);
-	cout << "Second energy check: Needed:" << EJ*1e3 << "mJ -> Actual:" << act_EJ3*1e3 << "mJ" << endl;
-// Noisy pulse - not background noise - Not tested
-	if (tCoh!=0) {
-		errorhl(11);
-		tCoh=50;
+	//	cout << timeProfile[1] << " " << fw <<  endl;
+	double act_EJ3 = cInt(m_ctimeProf, fw, dtps);
+	//	cout << absTP[nt/2] << " " << timeProfile[nt/2] << " " << fw*dtps*1e-12 << " " << act_EJ3/(fw*dtps*1e-12) << endl;
+	//	exit(0);
+	std::cout << "Second energy check: Needed:" << m_EJ * 1e3 << "mJ -> Actual:" << act_EJ3 * 1e3 << "mJ" << std::endl;
+	
+	// Noisy pulse - not background noise - Not tested
+	if (m_tc!=0) {
+		std::cout << "Error: Noise not implemented!" << std::endl;
+		exit(0);
+		/*m_tc = 50; // Re-write to a sensible number before test completes.
 		double fspec;
-		complex<double> *cva;
-		cva = new complex<double>[nt];
+		std::vector<complex<double>> cva(nt);
 		fspec=dw*dw*tCoh*tCoh/(8*log(2));
 		cva=noise(cva,profType,nt,fspec);
 		for (j=0;j<nt;j++) {
-			imag(timeProfile[j])=imag(timeProfile[j])*imag(cva[j])/(abs(cva[j])+1e-20);
+			imag(m_ctimeProf[j])=imag(m_ctimeProf[j])*imag(cva[j])/(abs(cva[j])+1e-20);
 			cout << cva[j] << endl;
-		}
+		}*/
 	}
-// Chirping procedure
+	// Chirping procedure
 	if(chirpType==1) {
 		if (cpp1!=0 || cpp2!=0) {
 		// In this chirping procedure the spectral bandwidth is unchanged
 		// - pulse duration is increased 
 			cout << "Normal chirping procedure" << endl;
-			chirper_norm(timeProfile, profType, nt, cpp1, cpp2, p);
-			double act_EJ4 = cInt(timeProfile, fw);
+			chirper_norm(m_ctimeProf, profType, nt, cpp1, cpp2, p);
+			double act_EJ4 = cInt(m_ctimeProf, fw);
 			cout << "Energy check after chirping: Needed:" << EJ*1e3 << "mJ -> Actual:" << act_EJ4*1e3 << "mJ" << endl;	
 			// FIXME: need to check why it changes so much - numerical issue??
 			if (EJ!=act_EJ4) {
 				cout << "Inconsistent energies! Correcting..." << endl;
 				for (j=0;j<nt;j++) {
-					timeProfile[j] = polar((abs(timeProfile[j])*sqrt(EJ/act_EJ4)), arg(timeProfile[j]));
+					m_ctimeProf[j] = polar((abs(m_ctimeProf[j])*sqrt(EJ/m_ctimeProf)), arg(m_ctimeProf[j]));
 				}
-				double act_EJ5 = cInt(timeProfile, fw);
+				double act_EJ5 = cInt(m_ctimeProf, fw);
 				cout << "Energy check again: Needed:" << EJ*1e3 << "mJ -> Actual:" << act_EJ5*1e3 << "mJ" << endl;	
 			}
 		}
@@ -530,7 +557,7 @@ void Pulse::GenProfile(Crystal &stage, double dtps, double tlead) {
 	else {
 		if (cpd1!=0 || cpd2!=0) {
 			cout << "\tUsing direct chirp" << endl;
-			chirper_direct(timeProfile, nt, cpd1, cpd2);
+			chirper_direct(m_ctimeProf, nt, cpd1, cpd2);
 		}
 	}
 	fftw_destroy_plan(p);
