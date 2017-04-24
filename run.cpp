@@ -66,6 +66,10 @@ int main(int argc, char *argv[]) {
 		std::cout << "Wrong number of parameters in file." << std::endl;
 		exit(0);
 	}
+
+	// Group chirp input data
+	chirp chp;
+
 	int mode = (int) parsed.at(o++);
 	int nStage = (int) parsed.at(o++);
 	int cryst1 = (int) parsed.at(o++);
@@ -112,20 +116,20 @@ int main(int argc, char *argv[]) {
 	double Xcm2_3 = parsed.at(o++);
 	int frame = (int) parsed.at(o++);
 	int chirpType = (int) parsed.at(o++);
-	double chpSig = parsed.at(o++); // Dispersion values (for option normal in fs2),S-P-I, chirp between stages 2-3 for signal/
-	double chpPum = parsed.at(o++);
-	double chpIdl = parsed.at(o++);
-	double chpSig23 = parsed.at(o++);
-	double chpSig2 = parsed.at(o++); // Non-linear dispersion values, for normal chirp, S-P-I, fs3, last one is for st 2-3/
-	double chpPum2 = parsed.at(o++);
-	double chpIdl2 = parsed.at(o++);
-	double chpSig223 = parsed.at(o++);
-	double chpSigL = parsed.at(o++); // Dispersion values for direct chirp S-P-I GHz per ps/
-	double chpPumL = parsed.at(o++);
-	double chpIdlL = parsed.at(o++);
-	double chpSigNL = parsed.at(o++); // Non-linear dispersion values, direct chirp, S-P-I, Ghz/ps/ps/
-	double chpPumNL = parsed.at(o++);
-	double chpIdlNL = parsed.at(o++);
+	chp.chpSig = parsed.at(o++); // Dispersion values (for option normal in fs2),S-P-I, chirp between stages 2-3 for signal/
+	chp.chpPum = parsed.at(o++);
+	chp.chpIdl = parsed.at(o++);
+	chp.chpSig23 = parsed.at(o++);
+	chp.chpSig2 = parsed.at(o++); // Non-linear dispersion values, for normal chirp, S-P-I, fs3, last one is for st 2-3/
+	chp.chpPum2 = parsed.at(o++);
+	chp.chpIdl2 = parsed.at(o++);
+	chp.chpSig223 = parsed.at(o++);
+	chp.chpSigL = parsed.at(o++); // Dispersion values for direct chirp S-P-I GHz per ps/
+	chp.chpPumL = parsed.at(o++);
+	chp.chpIdlL = parsed.at(o++);
+	chp.chpSigNL = parsed.at(o++); // Non-linear dispersion values, direct chirp, S-P-I, Ghz/ps/ps/
+	chp.chpPumNL = parsed.at(o++);
+	chp.chpIdlNL = parsed.at(o++);
 	double tcPum = parsed.at(o++);
 	double tcSig = parsed.at(o++);
 	double tcIdl = parsed.at(o++);
@@ -298,22 +302,11 @@ int main(int argc, char *argv[]) {
 			std::cout << "Error: Profile reading from file can only be used for signal pulse in the current version" << std::endl;
 		}
 		// Generate profile, adjust energy, add noise and chirp
-		Pump1->GenProfile(*stage1, dtps, tlead);
-			
-			
-			
-			
-			, dtPumpL, dtPumpT, Xcm2, pEJ, fwp, tcPum, chpPum, chpPum2, chpPumL, chpPumNL);
-		
-		
-		
-		
-		
-		
+		Pump1->GenProfile(*stage1, dtps, tlead, chirpType, chp.chpPum, chp.chpPum2, chp.chpPumL, chp.chpPumNL, dw);
 		}
 		else {
-			for (j=0;j<nt;j++) {
-				timeProfPum[j] = 0;
+			for (int j=0; j<nt; j++) {
+				Pump1->m_ctimeProf[j] = 0;
 			}
 		}
 		//cout << pow(abs(timeProfPum[nt/2]),2) << " " << fwp << " " << dtps << endl;

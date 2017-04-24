@@ -21,14 +21,45 @@ void cvector_to_fftw(int nt, std::vector<std::complex<double>> in, fftw_complex*
 	}
 }
 
-void fftw_to_cvector(int nt, fftw_complex* in, std::vector<std::complex<double>> out) {
+void fftw_to_cvector(int nt, fftw_complex* in, std::vector<std::complex<double>> &out) {
 	// Convert fftw vector to complex vector
 	for (int j=0; j<nt; j++) {
 		out[j] = std::complex(in[j][0],in[j][1]);
 	}
 }
 
+int fftshift(std::vector<std::complex<double>> &vekt, int size) {
+// FFT-shift
+	std::complex<double> temp, temp2;
+	for(int j=0; j<size/4; j++){
+		temp = vekt[j];
+		vekt[j] = vekt[size/2-(1+j)];
+		vekt[size/2-(1+j)] = temp;
+		temp2 = vekt[j+size/2];
+		vekt[j+size/2] = vekt[size-(1+j)];
+		vekt[size-(1+j)] = temp2;
+	}
+}
 
+int fftshift(fftw_complex* vekt, int size) {
+// FFT-shift
+	fftw_complex temp;
+	fftw_complex temp2;
+	for(int j=0; j<size/4; j++){
+		temp[0] = vekt[j][0];
+		temp[1] = vekt[j][1];
+		vekt[j][0] = vekt[size/2-(1+j)][0];
+		vekt[j][1] = vekt[size/2-(1+j)][1];
+		vekt[size/2-(1+j)][0] = temp[0];
+		vekt[size/2-(1+j)][1] = temp[1];
+		temp2[0] = vekt[j+size/2][0];
+		temp2[1] = vekt[j+size/2][1];
+		vekt[j+size/2][0] = vekt[size-(1+j)][0];
+		vekt[j+size/2][1] = vekt[size-(1+j)][1];
+		vekt[size-(1+j)][0] = temp2[0];
+		vekt[size-(1+j)][1] = temp2[1];
+	}
+}
 /*
 
 
@@ -299,19 +330,7 @@ int chirper_direct(complex<double> *timeProfile, int size, double chp1, double c
 	}
 }
 /*=====================================================================*
-int fftshift(complex<double> *vekt, int size) {
-// FFT-shift
-	complex<double> temp, temp2;
-	for(j=0;j<size/4;j++){
-		temp = vekt[j];
-		vekt[j] = vekt[size/2-(1+j)];
-		vekt[size/2-(1+j)] = temp;
-		temp2 = vekt[j+size/2];
-		vekt[j+size/2] = vekt[size-(1+j)];
-		vekt[size-(1+j)] = temp2;
-	}
 
-}
 /*=====================================================================*
 int spectrum(complex<double> *timeProf, double* wl, const char *ofname, int profType) {
 // This function calculates the pulse spectrum, FWHM, and writes into file

@@ -5,9 +5,10 @@
 #include <fstream>
 #include <string>
 #include <sstream>
+#include <memory>
 #include <gsl/gsl_spline.h>
 #include <gsl/gsl_interp.h>
-#include <fftw3/fftw3.h>
+#include <fftw3.h>
 #include "pulse.h"
 #include "phys_constants.h"
 #include "utils.h"
@@ -364,7 +365,7 @@ double Pulse::cInt(std::vector<std::complex<double>> cfield, double fww, double 
 	return area;
 }
 
-void Pulse::GenProfile(Crystal &stage, double dtps, double tlead) {
+void Pulse::GenProfile(Crystal &stage, double dtps, double tlead, int chirpType, double chp1, double chp2, double chd1, double chd2, double dw) {
 	//(complex<double> *timeProfile, int profType, double tl, double tt, double xcm2, double EJ, double fw, double tCoh, double cpp1, double cpp2, double cpd1, double cpd2) {
 	// This function generates a skewed gaussian or sech2 profile (skewed in time or spec)
 	// Adds background, noise and chirp if needed.
@@ -475,10 +476,10 @@ void Pulse::GenProfile(Crystal &stage, double dtps, double tlead) {
 		case 2:
 		// Sech squared temporal intensity profile
 			for(int j=0; j<nt/2; j++) {
-				m_absTP.push_back(PhysicalConstants::small + std::pow(2 / (std::exp(-(dtps * (j+1) - tlead) / stage.m_dtPumpL) + 1 / std::exp(-(dtps * (j+1) - tlead) / stage.m_dtPumpT)), 2);
+				m_absTP.push_back(PhysicalConstants::small + std::pow(2 / (std::exp(-(dtps * (j+1) - tlead) / stage.m_dtPumpL) + 1 / std::exp(-(dtps * (j+1) - tlead) / stage.m_dtPumpT)), 2));
 			}
 			for(int j=nt/2;j<nt;j++) {
-				m_absTP.push_back(PhysicalConstants::small + std::pow(2 / (std::exp(-(dtps * (j+1) - tlead) / stage.m_dtPumpT) + 1 / std::exp(-(dtps * (j+1) - tlead) / stage.m_dtPumpT)), 2);
+				m_absTP.push_back(PhysicalConstants::small + std::pow(2 / (std::exp(-(dtps * (j+1) - tlead) / stage.m_dtPumpT) + 1 / std::exp(-(dtps * (j+1) - tlead) / stage.m_dtPumpT)), 2));
 			}
 			break;
 
@@ -536,30 +537,86 @@ void Pulse::GenProfile(Crystal &stage, double dtps, double tlead) {
 	}
 	// Chirping procedure
 	if(chirpType==1) {
-		if (cpp1!=0 || cpp2!=0) {
-		// In this chirping procedure the spectral bandwidth is unchanged
-		// - pulse duration is increased 
-			cout << "Normal chirping procedure" << endl;
-			chirper_norm(m_ctimeProf, profType, nt, cpp1, cpp2, p);
-			double act_EJ4 = cInt(m_ctimeProf, fw);
-			cout << "Energy check after chirping: Needed:" << EJ*1e3 << "mJ -> Actual:" << act_EJ4*1e3 << "mJ" << endl;	
+		if (chp1!=0 || chp2!=0) {
+			// In this chirping procedure the spectral bandwidth is unchanged
+			// - pulse duration is increased 
+			std::cout << "Normal chirping procedure" << std::endl;
+			chirper_norm(m_ctimeProf, m_prof, chp1, chp2, dw);
+			double act_EJ4 = cInt(m_ctimeProf, fw, dtps);
+			std::cout << "Energy check after chirping: Needed:" << m_EJ * 1e3 << "mJ -> Actual:" << act_EJ4 * 1e3 << "mJ" << std::endl;	
 			// FIXME: need to check why it changes so much - numerical issue??
-			if (EJ!=act_EJ4) {
-				cout << "Inconsistent energies! Correcting..." << endl;
-				for (j=0;j<nt;j++) {
-					m_ctimeProf[j] = polar((abs(m_ctimeProf[j])*sqrt(EJ/m_ctimeProf)), arg(m_ctimeProf[j]));
+			if (m_EJ!=act_EJ4) {
+				std::cout << "Inconsistent energies! Correcting..." << std::endl;
+				for (int j=0; j<nt; j++) {
+					m_ctimeProf[j] = std::polar((std::abs(m_ctimeProf[j]) * std::sqrt(m_EJ / act_EJ4)), std::arg(m_ctimeProf[j]));
 				}
-				double act_EJ5 = cInt(m_ctimeProf, fw);
-				cout << "Energy check again: Needed:" << EJ*1e3 << "mJ -> Actual:" << act_EJ5*1e3 << "mJ" << endl;	
+				double act_EJ5 = cInt(m_ctimeProf, fw, dtps);
+				std::cout << "Energy check again: Needed:" << m_EJ * 1e3 << "mJ -> Actual:" << act_EJ5 * 1e3 << "mJ" << std::endl;	
 			}
 		}
 	}
 	else {
-		if (cpd1!=0 || cpd2!=0) {
-			cout << "\tUsing direct chirp" << endl;
-			chirper_direct(m_ctimeProf, nt, cpd1, cpd2);
+		if (chd1!=0 || chd2!=0) {
+			std::cout << "\tUsing direct chirp" << std::endl;
+			chirper_direct(m_ctimeProf, dtps, chd1, chd2);
 		}
 	}
-	fftw_destroy_plan(p);
-// Adding a background will be an option later + noise
+}
+
+int Pulse::chirper_norm(std::vector<std::complex<double>> &timeProfile, int profType, double phi2, double phi3, double dw) {
+	// Chirping function - normal chirp
+	// FFT to get to spectral domain:
+	std::ifstream ifile2("fftplan2.dat");
+	fftw_plan p;
+	int nt = timeProfile.size();
+	std::unique_ptr<fftw_complex[]> in = std::make_unique<fftw_complex[]>(nt);
+	std::unique_ptr<fftw_complex[]> out = std::make_unique<fftw_complex[]>(nt);
+	std::vector<std::complex<double>> spec(nt);
+	cvector_to_fftw(nt, timeProfile, in.get());
+	// TODO: does planning already transform?
+	if(!ifile2) {
+		std::cout << "Planning fastest FFT algorithm for this CPU... This will take a while, but needs to run only once on this machine." << std::endl;
+		p = fftw_plan_dft_1d(nt, in.get(), out.get(), FFTW_BACKWARD, FFTW_PATIENT);
+		std::cout << "Plan created, saving it as 'fftplan2.dat'" << std::endl;
+		if(!fftw_export_wisdom_to_filename("fftplan2.dat"))
+			std::cout << "Error writing plan" << std::endl;
+	}
+	else {
+		std::cout << "Found an FFT plan file. Reading the FFT plan from file." << std::endl; 
+		fftw_import_wisdom_from_filename("fftplan2.dat");
+		p = fftw_plan_dft_1d(nt, in.get(), out.get(), FFTW_BACKWARD, FFTW_PATIENT);
+	}
+	fftw_execute(p);
+	if (profType!=0) fftshift(out.get(), nt);
+	fftw_to_cvector(nt, out.get(), spec); // TODO does this work?
+	for (int j=0; j<nt; j++) {
+		// this is actually in the spectral domain, just reusing memory.
+		// Applying chirp in the spectral domain.
+		spec[j] = std::polar(std::abs(spec[j]), phi2 / 2 * std::pow((-nt / 2 + j) * dw, 2) + phi3 / 6 * std::pow((-nt / 2 + j) * dw, 3));
+	}
+	// Converting back to time
+	cvector_to_fftw(nt, spec, in.get());
+	p = fftw_plan_dft_1d(nt, in.get(), out.get(), FFTW_FORWARD, FFTW_ESTIMATE);
+	fftw_execute(p);
+	fftw_to_cvector(nt, out.get(), timeProfile);
+	for (int j=0; j<nt; j++) {
+	// sqrt(nt)*sqrt(nt) division required again after fft
+		timeProfile[j].real(timeProfile[j].real() / nt); 
+		timeProfile[j].imag(timeProfile[j].imag() / nt);
+		//timeProfile[j] = polar(abs(timeProfile[j])/nt, arg(timeProfile[j])); 
+	}
+	fftshift(timeProfile, nt);
+}
+
+int Pulse::chirper_direct(std::vector<std::complex<double>> &timeProfile, double dtps, double chp1, double chp2) {
+	// This function applies linear (and nonlinear) chirp directly to the complex field
+	// in the time domain
+	// TODO: Maybe fftshift before and after is needed, check..
+	int nt = timeProfile.size();
+	std::cout << "This type of chirping has not been tested yet." << std::endl;
+	for (int j=0; j<nt; j++) {
+		double par1 = 2 * std::numbers::pi * std::pow(dtps, 2) * chp1 / 2000;
+		double par2 = 2 * std::numbers::pi * std::pow(dtps, 3) * chp2 / 6000; // Fourier expansion
+		timeProfile[j] = std::polar(std::abs(timeProfile[j]), j * j * (par1 + par2 * j * j));
+	}
 }

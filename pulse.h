@@ -5,6 +5,24 @@
 #include <vector>
 
 /*=====================================================================*/
+// Group chirp data
+struct chirp {
+	double chpSig;
+	double chpPum;
+	double chpIdl;
+	double chpSig23;
+	double chpSig2;
+	double chpPum2;
+	double chpIdl2;
+	double chpSig223;
+	double chpSigL;
+	double chpPumL;
+	double chpIdlL;
+	double chpSigNL;
+	double chpPumNL;
+	double chpIdlNL;
+};
+
 // Create crystals
 class Crystal {
 	public:
@@ -62,10 +80,13 @@ class Pulse {
 		Pulse(double, double, double, double, double, int, int);
 		double calc_omega0();
 		void calc_limits(int, double);
-		void GenProfile(Crystal&, double, double);
+		void GenProfile(Crystal&, double, double, int, double, double, double, double, double);
 		double rInt(double dtps);
 		double cInt(std::vector<std::complex<double>>, double, double);
-		
+		// TODO: Move private functions over to private (check)
+	private:
+		int chirper_norm(std::vector<std::complex<double>>&, int, double, double, double);
+		int chirper_direct(std::vector<std::complex<double>>&, double, double, double);
 
 };
 
