@@ -18,7 +18,7 @@ int main(int argc, char *argv[]) {
 	
     std::string version = "6.0";
     std::cout << "OPA program version " << version << std::endl;
-	
+
 	// Helper constants
     const int ndim = 524288; // 2**19
     
