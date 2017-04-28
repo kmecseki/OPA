@@ -49,11 +49,11 @@ class Crystal {
 		std::complex<double> m_pmism;
 		std::vector<std::complex<double>> m_cPum, m_cSig, m_cIdl;
 		double calcRefInd(double, int);
-		double calc_k(double, double, double);
+		void calc_k(double, double, double);
 		double calcPumCo(double);
 		void calc_PM(double, double, bool);
 		void setPhaseVel(const double, double, std::vector<double>, std::vector<double>, std::vector<double>, double*, double*, double*);
-		void makePhaseRelative(const int, const double, const double, const double, const double, std::vector<double>, std::vector<double>, std::vector<double>, std::vector<std::complex<double>>, std::vector<std::complex<double>>, std::vector<std::complex<double>>);
+		void makePhaseRelative(const int, const double, const double, const double, const double, std::vector<double>&, std::vector<double>&, std::vector<double>&, std::vector<std::complex<double>>&, std::vector<std::complex<double>>&, std::vector<std::complex<double>>&);
 	private:
 		double calc_xeff();
 };
@@ -74,6 +74,8 @@ class Pulse {
 		double m_xOrd;
 		double m_lam1, m_lam2;
 		double m_tc;
+		double m_kv;
+		double m_alp;
 		std::vector<double> m_lambdaj;
 		std::vector<double> m_absTP;
 		std::vector<std::complex<double>> m_ctimeProf;

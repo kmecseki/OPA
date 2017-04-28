@@ -143,7 +143,7 @@ double Crystal::calcRefInd(double lambda, int oe) {
 	}
 }
 
-double Crystal::calc_k(double wlpum, double wlsig, double wlidl) {
+void Crystal::calc_k(double wlpum, double wlsig, double wlidl) {
 	// Calculates and sets the instance's wavenumber k. In 1/micron.
 	this->m_kSig = m_nOrdSig * 2 * std::numbers::pi * 1e3 / wlsig;
 	this->m_kIdl = m_nOrdIdl * 2 * std::numbers::pi * 1e3 / wlidl;
@@ -281,7 +281,7 @@ void Crystal::setPhaseVel(double dw, double nColl_deg, std::vector<double> nPumj
 		//if (mode!=1) exit(0); Legacy
 }
 
-void Crystal::makePhaseRelative(const int frame, const double dw, const double gtdSig, const double gtdPum, const double gtdIdl, std::vector<double> phiPumj, std::vector<double> phiSigj, std::vector<double> phiIdlj, std::vector<std::complex<double>> cPhiPumj, std::vector<std::complex<double>> cPhiSigj, std::vector<std::complex<double>> cPhiIdlj) {
+void Crystal::makePhaseRelative(const int frame, const double dw, const double gtdSig, const double gtdPum, const double gtdIdl, std::vector<double> &phiPumj, std::vector<double> &phiSigj, std::vector<double> &phiIdlj, std::vector<std::complex<double>> &cPhiPumj, std::vector<std::complex<double>> &cPhiSigj, std::vector<std::complex<double>> &cPhiIdlj) {
 	// Local time frame selection
 	// negative sign because of: gtd = -d(phi)/domega to ensure spatial phase of form exp(-ikz)
 	int nt = phiPumj.size();
@@ -308,9 +308,9 @@ void Crystal::makePhaseRelative(const int frame, const double dw, const double g
 		phiPumj[j] = phiPumj[j] * 1e4 - (j - nt / 2) * dphm * 1e3 - phiPumjh * 1e4;
 		phiSigj[j] = phiSigj[j] * 1e4 - (j - nt / 2) * dphm * 1e3 - phiSigjh * 1e4;
 		phiIdlj[j] = phiIdlj[j] * 1e4 - (j - nt / 2) * dphm * 1e3 - phiIdljh * 1e4;
-		cPhiPumj[j] = std::polar(1.0, phiPumj[j]); // TODO: add this to pulse class
-		cPhiSigj[j] = std::polar(1.0, phiSigj[j]);
-		cPhiIdlj[j] = std::exp(1i * phiIdlj[j]); //does the same, as it should tested
+		cPhiPumj.push_back(std::polar(1.0, phiPumj[j])); // TODO: add this to pulse class
+		cPhiSigj.push_back(std::polar(1.0, phiSigj[j]));
+		cPhiIdlj.push_back(std::exp(1i * phiIdlj[j])); //does the same, as it should tested
 	}
 	// TODO: attempt to zero pump, but it is not used anywhere. removed for now.
 	//m_cPum = 0;
@@ -328,7 +328,10 @@ Pulse::Pulse(double dtL, double dtT, double EJ, double Xcm2, double tc, int prof
 	m_Xcm2(Xcm2),
 	m_tc(tc),
 	m_prof(prof),
-	m_nt(nt)
+	m_nt(nt),
+	m_absTP(nt),
+	m_ctimeProf(nt),
+	m_lambdaj(nt)
 	{}
 
 double Pulse::calc_omega0() {
@@ -369,7 +372,7 @@ void Pulse::GenProfile(Crystal &stage, double dtps, double tlead, int chirpType,
 	//(complex<double> *timeProfile, int profType, double tl, double tt, double xcm2, double EJ, double fw, double tCoh, double cpp1, double cpp2, double cpd1, double cpd2) {
 	// This function generates a skewed gaussian or sech2 profile (skewed in time or spec)
 	// Adds background, noise and chirp if needed.
-	int nt = m_ctimeProf.size();
+	int nt = m_nt;
 	switch (m_prof) {
 		case 0: {
 			// Reading profile from file (only for signal!)
@@ -453,7 +456,7 @@ void Pulse::GenProfile(Crystal &stage, double dtps, double tlead, int chirpType,
 				if (number>maxx) {
 					maxx = number;
 				}
-				m_absTP.push_back(number);
+				m_absTP[j] = number;
 
 			}
 			// Normalise
@@ -464,22 +467,22 @@ void Pulse::GenProfile(Crystal &stage, double dtps, double tlead, int chirpType,
 		}
 		
 		case 1: 
-			// Gaussian temporal intensity profile		
+			// Gaussian temporal intensity profile	
 			for(int j=0; j<nt/2; j++) { // Modified original code here to get overlapping profiles (dtps*j instead of j+1)
-				m_absTP.push_back(PhysicalConstants::small + std::exp(-(std::log(2) * std::pow(((dtps * j - tlead) / stage.m_dtPumpL), 2)))); // Make sure tl is dtpumpl
+				m_absTP[j] = PhysicalConstants::small + std::exp(-(std::log(2) * std::pow(((dtps * j - tlead) / stage.m_dtPumpL), 2))); // Make sure tl is dtpumpl
 			}
 			for(int j=nt/2; j<nt; j++) {
-				m_absTP.push_back(PhysicalConstants::small + std::exp(-(std::log(2) * std::pow(((dtps*j - tlead) / stage.m_dtPumpT), 2))));
+				m_absTP[j] = PhysicalConstants::small + std::exp(-(std::log(2) * std::pow(((dtps * j - tlead) / stage.m_dtPumpT), 2)));
 			}
 			break;
 			
 		case 2:
 		// Sech squared temporal intensity profile
 			for(int j=0; j<nt/2; j++) {
-				m_absTP.push_back(PhysicalConstants::small + std::pow(2 / (std::exp(-(dtps * (j+1) - tlead) / stage.m_dtPumpL) + 1 / std::exp(-(dtps * (j+1) - tlead) / stage.m_dtPumpT)), 2));
+				m_absTP[j] = PhysicalConstants::small + std::pow(2 / (std::exp(-(dtps * (j+1) - tlead) / stage.m_dtPumpL) + 1 / std::exp(-(dtps * (j+1) - tlead) / stage.m_dtPumpL)), 2);
 			}
 			for(int j=nt/2;j<nt;j++) {
-				m_absTP.push_back(PhysicalConstants::small + std::pow(2 / (std::exp(-(dtps * (j+1) - tlead) / stage.m_dtPumpT) + 1 / std::exp(-(dtps * (j+1) - tlead) / stage.m_dtPumpT)), 2));
+				m_absTP[j] = PhysicalConstants::small + std::pow(2 / (std::exp(-(dtps * (j+1) - tlead) / stage.m_dtPumpT) + 1 / std::exp(-(dtps * (j+1) - tlead) / stage.m_dtPumpT)), 2);
 			}
 			break;
 
@@ -490,7 +493,7 @@ void Pulse::GenProfile(Crystal &stage, double dtps, double tlead, int chirpType,
 	// Basic intensity profile formed in time -> absTP
 	// Next: Power scaling
 	double act_EJ;
-	act_EJ = this->rInt(dtps);
+	act_EJ = rInt(dtps);
 	for (int j=0; j<nt; j++) {
 		m_absTP[j] = (m_EJ * m_absTP[j] / act_EJ);
 	}
