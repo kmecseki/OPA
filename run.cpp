@@ -359,6 +359,8 @@ int main(int argc, char *argv[]) {
 		double bdz = std::sqrt(std::abs(q1-q2));
 		double bl = bdz * stage1->m_noStep;
 		double fdkb = dkdzh / bdz;
+		std::complex<double> csx;
+		double sxpk;
 		if(q1<q2) {
 			std::cout << "Hyperbolic case" << std::endl;
 			double chbl, shbl;
@@ -367,29 +369,26 @@ int main(int argc, char *argv[]) {
 			double p1 = (bl * sina * chbl - (stage1->m_dk * stage1->m_cLength * 0.5) * cosa * shbl);
 			double p2 = (bl * cosa * chbl + (stage1->m_dk * stage1->m_cLength * 0.5) * sina * shbl);
 			double phpk = std::atan(p1 / p2);
-			
-			
-			
-			real(csx) = chbl;
-				imag(csx) = fdkb*shbl;
-				sxpk = pow(abs(csx),2);
-			}
-			else {
-				cout << "Trigonometric case" << endl;
-				double cosbl, sinbl;
-				cosbl = cos(bl);
-				sinbl = sin(bl);
-				p1 = (bl*sina*cosbl-(dk*crysLth*0.5)*cosa*sinbl);
-				p2 = (bl*cosa*cosbl+(dk*crysLth*0.5)*sina*sinbl);
-				phpk = atan(p1/p2);
-				real(csx) = cosbl;
-				imag(csx) = fdkb*sinbl;
-				sxpk = pow(abs(csx),2);
-			}
-			// sxpk lehet a gain es phpk a fazis
+		
+			csx.real(chbl);
+			csx.imag(fdkb * shbl);
+			sxpk = std::pow(std::abs(csx), 2);
 		}
-		else
-			double sxpk = 0;
+		else {
+			std::cout << "Trigonometric case" << std::endl;
+			double cosbl, sinbl;
+			cosbl = std::cos(bl);
+			sinbl = std::sin(bl);
+			double p1 = (bl * sina * cosbl - (stage1->m_dk * stage1->m_cLength * 0.5) * cosa * sinbl);
+			double p2 = (bl * cosa * cosbl + (stage1->m_dk * stage1->m_cLength * 0.5) * sina * sinbl);
+			double phpk = std::atan(p1 / p2); // phase
+			csx.real(cosbl);
+			csx.imag(fdkb * sinbl);
+			sxpk = std::pow(std::abs(csx), 2); // gain
+		}
+	}
+	else
+		double sxpk = 0;
 
 
 
