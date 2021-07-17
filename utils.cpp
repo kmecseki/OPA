@@ -60,6 +60,83 @@ int fftshift(fftw_complex* vekt, int size) {
 		vekt[size-(1+j)][1] = temp2[1];
 	}
 }
+
+double FindMax(std::vector<double> &vek) {
+// Finds maximum of vector 'vek'.
+	int size = vek.size();
+	double maxi=0;
+	for (int j=0;j <size; j++) {
+		if (vek[j]>maxi)
+			maxi = vek[j];
+	}
+	return maxi;
+}
+
+double FindMax(std::vector<std::complex<double>> &vek) {
+// Finds maximum of the complex vector 'vek'.
+	int size = vek.size();
+	double maxi=0;
+	for (int j=0;j <size; j++) {
+		if (vek[j].real()>maxi)
+			maxi = vek[j].real();
+	}
+	return maxi;
+}
+
+double get_FWHM(std::vector<std::complex<double>> profile, std::vector<double> wl) {
+// Finds FWHM in indeces, need to scale
+	double max = FindMax(profile);
+	int k1, k2;
+	for (j=0;j<nt;j++) {
+		if (abs(profile[j])<max/2 && abs(profile[j+1])>=max/2) {
+			k1 = j;
+			break;
+		}
+		else k1 = 0;
+	}
+	for (j=nt;j>0;j--) {
+		if (abs(profile[j])<max/2 && abs(profile[j-1])>=max/2) {
+			k2 = j;
+			break;
+		}
+		else k2 = 0;
+	}
+	return abs(wl[k1]-wl[k2]);
+}
+
+int writeToFile(const char *ofname, std::vector<double> &data1, std::vector<std::complex<double>> &data2) {
+// Opens a file with name ofname, and outputs complex data
+	ofstream filestr;
+	filestr.open(ofname, ios::out | ios::app);
+	filestr.precision(15);
+	int nt = data1.size();
+	if (filestr.is_open()) {
+		for (int j=0; j<nt; j++) {
+			filestr << data1[j] << "\t" << real(data2[j]) << "\t" << imag(data2[j]) << "\n";
+		}
+	}
+	else {
+		std::cout << "Error opening output file!" << std::endl;
+	}
+	filestr.close();
+}
+
+int writeToFile(const char *ofname, std::vector<double> &data1, std::vector<double> &data2) {
+// Opens a file with name ofname, and outputs complex data
+	ofstream filestr;
+	filestr.open(ofname, ios::out | ios::app);
+	filestr.precision(15);
+	int nt = data1.size();
+	if (filestr.is_open()) {
+		for (int j=0; j<nt; j++) {
+			filestr << data1[j] << "\t" << data2[j] << "\n";
+		}
+	}
+	else {
+		std::cout << "Error opening output file!" << std::endl;
+	}
+	filestr.close();
+}
 /*
 
 
@@ -176,47 +253,7 @@ int writeToFile(const char *ofname, double *data1, double *data2) {
 }
 /*=====================================================================*/
 /*
-int writeToFile(const char *ofname, double data1, double data2) {
-// Opens a file with name ofname, and outputs single real data
-	ofstream filestr;
-	filestr.open(ofname, ios::out | ios::app);
-	if(filestr.is_open()) {
-		filestr << data1 << "\t" << data2 << endl;
-	}
-	else {
-		errorhl(7);
-	}
-	filestr.close();
-}
 
-int writeToFile(const char *ofname, double data1, complex<double> data2) {
-// Opens a file with name ofname, and outputs single complex data
-	ofstream filestr;
-	filestr.open(ofname, ios::out | ios::app);
-	if(filestr.is_open()) {
-		filestr << data1 << "\t" << real(data2) << "\t" << imag(data2) << endl;
-	}
-	else {
-		errorhl(7);
-	}
-	filestr.close();
-}
-
-int writeToFile(const char *ofname, double *data1, complex<double> *data2) {
-// Opens a file with name ofname, and outputs complex data
-	ofstream filestr;
-	filestr.open(ofname, ios::out | ios::app);
-	filestr.precision(15);
-	if(filestr.is_open()) {
-		for (j=0;j<nt;j++) {
-			filestr << data1[j] << "\t" << real(data2[j]) << "\t" << imag(data2[j]) << endl;
-		}
-	}
-	else {
-		errorhl(7);
-	}
-	filestr.close();
-}
 
 
 
@@ -230,15 +267,7 @@ int writeToFile(const char *ofname, double *data1, complex<double> *data2) {
 /*=====================================================================
 
 /*=====================================================================
-double FindMax(double *vek, int s) {
-// Finds maximum of vector 'vek' of size 's'.
-	double maxi=0;
-	for (j=0;j<s;j++) {
-		if(vek[j]>maxi)
-			maxi=vek[j];
-	}
-	return maxi;
-}
+
 /*=====================================================================
 double FindMax(complex<double> *cfield, int s) {
 // Finds maximum of vector 'vek' of size 's'.
@@ -332,45 +361,8 @@ int chirper_direct(complex<double> *timeProfile, int size, double chp1, double c
 /*=====================================================================*
 
 /*=====================================================================*
-int spectrum(complex<double> *timeProf, double* wl, const char *ofname, int profType) {
-// This function calculates the pulse spectrum, FWHM, and writes into file
-	complex<double> *spek;
-	spek = new complex<double>[nt];
-	double *tempspek;
-	tempspek = new double[nt];
-	double FWHM;
-	fftw_plan p = fftw_plan_dft_1d(nt,reinterpret_cast<fftw_complex*>(timeProf),reinterpret_cast<fftw_complex*>(spek),FFTW_BACKWARD,FFTW_ESTIMATE);
-	fftw_execute(p);
-	if (profType!=0)
-		fftshift(spek,nt);
-	for (j=0;j<nt;j++) {
-		spek[j] = polar(abs(spek[j])/sqrt(nt), arg(spek[j]));
-		tempspek[j] = abs(spek[j]);
-    }
-    FWHM = get_FWHM(spek, wl); // This can be written out if needed. - not tested
-    cout << "FWHM : " << FWHM << " nm" << endl;
-    writeToFile(ofname, wl, tempspek);    
-}
+
 /*=====================================================================*
-double get_FWHM(complex<double> *profile, double* wl) {
-// Finds FWHM in indeces, need to scale
-	double max = FindMax(profile, nt);
-	int k1, k2;
-	for (j=0;j<nt;j++) {
-		if (abs(profile[j])<max/2 && abs(profile[j+1])>=max/2) {
-			k1 = j;
-			break;
-		}
-		else k1 = 0;
-	}
-	for (j=nt;j>0;j--) {
-		if (abs(profile[j])<max/2 && abs(profile[j-1])>=max/2) {
-			k2 = j;
-			break;
-		}
-		else k2 = 0;
-	}
-	return abs(wl[k1]-wl[k2]);
 
 /*=====================================================================*
 int disperse(complex<double> *profile, complex<double> *phase, int nt, int proftype) {

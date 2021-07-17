@@ -170,21 +170,7 @@ itt
 /*=====================================================================*/
 
 /*=====================================================================*/
-	// Applying initial phase
-		if (cStage==1) {
-			for (j=0;j<nt;j++) {
-				timeProfPum[j] = polar(abs(timeProfPum[j]),arg(timeProfPum[j])+tPi/2*phiP);
-				timeProfSig[j] = polar(abs(timeProfSig[j]),arg(timeProfSig[j])+tPi/2*phiS);
-				timeProfIdl[j] = polar(abs(timeProfIdl[j]),arg(timeProfIdl[j])+tPi/2*phiI);
-			}
-		}
-	// Calculate spectrums
-		cout << "Calculating Pump spectrum\t";
-		spectrum(timeProfPum, pLambdaj, "output//Spec_pum.dat", pProf);
-		cout << "Calculating Signal spectrum\t";
-		spectrum(timeProfSig, sLambdaj, "output//Spec_sig.dat", sProf);
-		cout << "Calculating Idler spectrum\t";
-		spectrum(timeProfIdl, iLambdaj, "output//Spec_idl.dat", iProf);
+
 /*=====================================================================*/
 	// OPA
 		if (cStage==1)

@@ -623,3 +623,28 @@ int Pulse::chirper_direct(std::vector<std::complex<double>> &timeProfile, double
 		timeProfile[j] = std::polar(std::abs(timeProfile[j]), j * j * (par1 + par2 * j * j));
 	}
 }
+
+int Pulse::spectrum(const char *ofname) {
+// This function calculates the pulse spectrum, FWHM, and writes into file
+	int nt = m_ctimeProf.size();
+	std::vector<std::complex<double>> spek(nt);
+	std::vector<double> tempspek(nt);
+	double FWHM;
+	fftw_complex timeProf2[nt];
+	cvector_to_fftw(nt, m_ctimeProf, timeProf2);
+	fftw_complex spek2[nt];
+	cvector_to_fftw(nt, spek, spek2);
+	fftw_plan p = fftw_plan_dft_1d(nt, timeProf2, spek2, FFTW_BACKWARD, FFTW_ESTIMATE);
+	fftw_execute(p);
+	fftw_destroy_plan(p);
+	fftw_to_cvector(nt, spek2, spek);
+	if (m_prof!=0)
+		fftshift(spek,nt);
+	for (int j=0; j<nt; j++) {
+		spek[j] = std::polar(std::abs(spek[j]) / std::sqrt(nt), arg(spek[j]));
+		tempspek[j] = std::abs(spek[j]);
+    }
+    FWHM = get_FWHM(spek, m_lambdaj); // This can be written out if needed. - not tested
+    std::cout << "FWHM : " << FWHM << " nm" << std::endl;
+    writeToFile(ofname, m_lambdaj, tempspek);    
+}

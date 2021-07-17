@@ -85,11 +85,11 @@ class Pulse {
 		void GenProfile(Crystal&, double, double, int, double, double, double, double, double);
 		double rInt(double dtps);
 		double cInt(std::vector<std::complex<double>>, double, double);
+		int spectrum(const char *ofname);
 		// TODO: Move private functions over to private (check)
 	private:
 		int chirper_norm(std::vector<std::complex<double>>&, int, double, double, double);
 		int chirper_direct(std::vector<std::complex<double>>&, double, double, double);
-
 };
 
 #endif // PULSE_H

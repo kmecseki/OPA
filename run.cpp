@@ -390,7 +390,22 @@ int main(int argc, char *argv[]) {
 	else
 		double sxpk = 0;
 
+	// Applying initial phase
+	for (int j=0; j<nt; j++) {
+		Pump1->m_ctimeProf[j] = std::polar(std::abs(Pump1->m_ctimeProf[j]), std::arg(Pump1->m_ctimeProf[j]) + 2 * std::numbers::pi / 2 * phiP);
+		Signal1->m_ctimeProf[j] = std::polar(std::abs(Signal1->m_ctimeProf[j]), std::arg(Signal1->m_ctimeProf[j]) + 2 * std::numbers::pi / 2 * phiS);
+		Idler1->m_ctimeProf[j] = std::polar(std::abs(Idler1->m_ctimeProf[j]), std::arg(Idler1->m_ctimeProf[j]) + 2 * std::numbers::pi / 2 * phiI);
+	}
+	
+	// Calculate spectrums
+	std::cout << "Calculating Pump spectrum" << std::endl;
+	Pump1->spectrum("output//Spec_pum.dat");
 
+	std::cout << "Calculating Signal spectrum" << std::endl;
+	Signal1->spectrum("output//Spec_sig.dat");
+	
+	std::cout << "Calculating Idler spectrum" << std::endl;
+	Idler1->spectrum("output//Spec_idl.dat");
 
 
 
