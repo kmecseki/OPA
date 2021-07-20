@@ -403,11 +403,10 @@ int main(int argc, char *argv[]) {
 
 	std::cout << "Calculating Signal spectrum" << std::endl;
 	Signal1->spectrum("output//Spec_sig.dat");
-	
+
 	std::cout << "Calculating Idler spectrum" << std::endl;
 	Idler1->spectrum("output//Spec_idl.dat");
 
-
-
+	OPA(timeProfPum, timeProfSig, timeProfIdl, noStep, cStage, fwp, fws, fwi, chirpType, sProf, pProf, iProf, cPhiSigj, cPhiIdlj, cPhiPumj, cStage-1);
 }
 

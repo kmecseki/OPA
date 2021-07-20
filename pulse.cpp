@@ -6,6 +6,7 @@
 #include <string>
 #include <sstream>
 #include <memory>
+#include <complex>
 #include <gsl/gsl_spline.h>
 #include <gsl/gsl_interp.h>
 #include <fftw3.h>
@@ -320,6 +321,108 @@ void Crystal::makePhaseRelative(const int frame, const double dw, const double g
 	//	}
 }
 
+// OPA step
+int Crystal::OPA(Pulse &Pum, Pulse &Sig, Pulse &Idl, double dtps) {
+
+	//(complex<double>* Pum, complex<double>* Sig, complex<double>* Idl, int noStep, int cStage, double fwp, double fws, double fwi, int chirpType, int sProf, int pProf, int iProf, complex<double>* sigPhase, complex<double>* idlPhase, complex<double>* pumPhase) {
+	// Numerical integration using Runga Kutta 4th sequence
+	std::cout << "entering OPA" << std::endl;
+	//double act_EJ6, act_EJ7, act_EJ8;
+	std::complex<double> cds1, cdp1, cdd1, cdk;
+	std::complex<double> cds2, cdp2, cdd2;
+	std::complex<double> cds3, cdp3, cdd3;
+	std::complex<double> cds4, cdp4, cdd4;
+	std::complex<double> csm1, cpm1, cdm1;
+	std::complex<double> csm2, cpm2, cdm2;
+	std::complex<double> csf3, cpf3, cdf3;
+	std::complex<double> clps, clpp, clpi;
+	clps.imag(Sig.m_alp);
+	clpp.imag(Pum.m_alp);
+	clpi.imag(Idl.m_alp);
+	//complex<double>* ez1 = new complex<double>[nt];
+	//complex<double>* ez2 = new complex<double>[nt];
+	int nt = Sig.m_ctimeProf.size();
+	std::complex<double> cdk(1.0, 0.0);
+	std::complex<double> cdkl;
+	for (int m=0; m<m_noStep; m++){
+		cdkl = cdk;
+		for (int j=0; j<nt; j++) {
+			cdk = cdkl;
+			cds1 = clps * Pum.m_ctimeProf[j] * std::conj(Idl.m_ctimeProf[j]) / cdk;
+			cdp1 = clpp * Sig.m_ctimeProf[j] * Idl.m_ctimeProf[j] * cdk;
+			cdd1 = clpi * Pum.m_ctimeProf[j] * std::conj(Sig.m_ctimeProf[j]) / cdk;
+
+			csm1 = Sig.m_ctimeProf[j] + cds1 / 2.0;
+			cpm1 = Pum.m_ctimeProf[j] + cdp1 / 2.0;
+			cdm1 = Idl.m_ctimeProf[j] + cdd1 / 2.0;
+		
+			cdk = cdk * std::polar(1.0, m_dk * m_dzcm * 0.5);
+			
+			cds2 = clps * cpm1 * std::conj(cdm1) / cdk;
+			cdp2 = clpp * csm1 * cdm1 * cdk;
+			cdd2 = clpi * cpm1 * std::conj(csm1) / cdk;
+			
+			csm2 = Sig.m_ctimeProf[j] + cds2 / 2.0;
+			cpm2 = Pum.m_ctimeProf[j] + cdp2 / 2.0;
+			cdm2 = Idl.m_ctimeProf[j] + cdd2 / 2.0;
+			
+			cds3 = clps * cpm2 * std::conj(cdm2) / cdk;
+			cdp3 = clpp * csm2 * cdm2 * cdk;
+			cdd3 = clpi * cpm2 * std::conj(csm2) / cdk;
+			
+			csf3 = Sig.m_ctimeProf[j] + cds3;
+			cpf3 = Pum.m_ctimeProf[j] + cdp3;
+			cdf3 = Idl.m_ctimeProf[j] + cdd3;
+	
+			cdk = cdk * std::polar(1.0, m_dk * m_dzcm * 0.5);
+
+			cds4 = clps * cpf3 * std::conj(cdf3) / cdk;
+			cdp4 = clpp * csf3 * cdf3 * cdk;
+			cdd4 = clpi * cpf3 * std::conj(csf3) / cdk;
+
+			Pum.m_ctimeProf[j] = Pum.m_ctimeProf[j] + (cdp1 + cdp4 + 2.0 * (cdp2 + cdp3)) / 6.0;
+			Sig.m_ctimeProf[j] = Sig.m_ctimeProf[j] + (cds1 + cds4 + 2.0 * (cds2 + cds3)) / 6.0;
+			Idl.m_ctimeProf[j] = Idl.m_ctimeProf[j] + (cdd1 + cdd4 + 2.0 * (cdd2 + cdd3)) / 6.0;
+
+			/*if(j==nt/2) {
+				if(cStage==1) {
+					writeToFile("asig1.dat", m, abs(Sig.m_ctimeProf[j])); 
+					writeToFile("apum1.dat", m, abs(Pum.m_ctimeProf[j])); 
+					writeToFile("aidl1.dat", m, abs(Idl.m_ctimeProf[j])); 
+				}
+                else if(cStage==2) {
+					writeToFile("asig2.dat", m, abs(Sig.m_ctimeProf[j]));
+					writeToFile("apum2.dat", m, abs(Pum.m_ctimeProf[j])); 
+					writeToFile("aidl2.dat", m, abs(Idl.m_ctimeProf[j])); 
+				}
+				else {
+					writeToFile("asig3.dat", m, abs(Sig.m_ctimeProf[j]));
+					writeToFile("apum3.dat", m, abs(Pum.m_ctimeProf[j])); 
+					writeToFile("aidl3.dat", m, abs(Idl[j]));
+				}
+			}*/
+		}
+		//cout.precision(15);
+		double act_EJ6 = Pum.cInt(Pum.m_ctimeProf, Pum.m_fw, dtps);
+		std::cout << "Energy of Pump:" << act_EJ6 * 1e3 << "mJ";
+		double act_EJ7 = Sig.cInt(Sig.m_ctimeProf, Sig.m_fw, dtps); // TODO: do we really need to pass these? Check other uses.
+		std::cout << "\t\t Signal:" << act_EJ7 * 1e3 << "mJ";
+		double act_EJ8 = Idl.cInt(Idl.m_ctimeProf, Idl.m_fw, dtps);
+		std::cout << "\t\tEnergy of Idler:" << act_EJ8 * 1e3 << "mJ";
+		std::cout << "\t\tTotal:" <<  act_EJ6 * 1e3 + act_EJ7 * 1e3 + act_EJ8 * 1e3 << " mJ" << std::endl;	
+
+		if(chirpType==1) {
+			disperse(Pum.m_ctimeProf,pumPhase,nt,pProf);
+			disperse(Sig,sigPhase,nt,sProf);
+			disperse(Idl,idlPhase,nt,iProf);
+		}
+		// Calculating non-linear phase shift - function for this at one point.
+		double n2 = nlindx(cCryst);
+		nlshift(cCryst, Pum.m_ctimeProf, fwp, n2);
+		nlshift(cCryst, Sig, fws, n2);
+		nlshift(cCryst, Idl, fwi, n2);	
+	}
+}
 
 Pulse::Pulse(double dtL, double dtT, double EJ, double Xcm2, double tc, int prof, int nt) :
     m_dtL(dtL),
@@ -503,10 +606,10 @@ void Pulse::GenProfile(Crystal &stage, double dtps, double tlead, int chirpType,
 	act_EJ = this->rInt(dtps);
 	std::cout << "First energy check: Needed:" << m_EJ * 1e3 << "mJ -> Actual:" << act_EJ * 1e3 << "mJ" << std::endl;
 	// Complex field profile has to be scaled as well
-	double fw = 0.5 * PhysicalConstants::c0 * PhysicalConstants::eps0 * (stage.m_nOrdPum * stage.m_coePum) * stage.m_xcm2; // Check units if sg is wrong
+	m_fw = 0.5 * PhysicalConstants::c0 * PhysicalConstants::eps0 * (stage.m_nOrdPum * stage.m_coePum) * stage.m_xcm2; // Check units if sg is wrong
 	if (m_prof==0) {
 		// In this case the spectrum is read from file - (only for signal)
-		double act_EJ2 = cInt(m_ctimeProf, fw, dtps);
+		double act_EJ2 = cInt(m_ctimeProf, m_fw, dtps);
 		for (int j=0; j<nt; j++) {
 			(m_ctimeProf[j]) = (m_ctimeProf[j]) * sqrt(m_EJ / act_EJ2);
 		}
@@ -515,11 +618,11 @@ void Pulse::GenProfile(Crystal &stage, double dtps, double tlead, int chirpType,
 	// For simulated profiles
 		for (int j=0; j<nt; j++) {
 			//timeProfile[j] = polar(sqrt((absTP[j]/fw)),0.0);
-			m_ctimeProf[j].real(std::sqrt(m_absTP[j] / fw));
+			m_ctimeProf[j].real(std::sqrt(m_absTP[j] / m_fw));
 		}
 	}
 	//	cout << timeProfile[1] << " " << fw <<  endl;
-	double act_EJ3 = cInt(m_ctimeProf, fw, dtps);
+	double act_EJ3 = cInt(m_ctimeProf, m_fw, dtps);
 	//	cout << absTP[nt/2] << " " << timeProfile[nt/2] << " " << fw*dtps*1e-12 << " " << act_EJ3/(fw*dtps*1e-12) << endl;
 	//	exit(0);
 	std::cout << "Second energy check: Needed:" << m_EJ * 1e3 << "mJ -> Actual:" << act_EJ3 * 1e3 << "mJ" << std::endl;
@@ -545,7 +648,7 @@ void Pulse::GenProfile(Crystal &stage, double dtps, double tlead, int chirpType,
 			// - pulse duration is increased 
 			std::cout << "Normal chirping procedure" << std::endl;
 			chirper_norm(m_ctimeProf, m_prof, chp1, chp2, dw);
-			double act_EJ4 = cInt(m_ctimeProf, fw, dtps);
+			double act_EJ4 = cInt(m_ctimeProf, m_fw, dtps);
 			std::cout << "Energy check after chirping: Needed:" << m_EJ * 1e3 << "mJ -> Actual:" << act_EJ4 * 1e3 << "mJ" << std::endl;	
 			// FIXME: need to check why it changes so much - numerical issue??
 			if (m_EJ!=act_EJ4) {
@@ -553,7 +656,7 @@ void Pulse::GenProfile(Crystal &stage, double dtps, double tlead, int chirpType,
 				for (int j=0; j<nt; j++) {
 					m_ctimeProf[j] = std::polar((std::abs(m_ctimeProf[j]) * std::sqrt(m_EJ / act_EJ4)), std::arg(m_ctimeProf[j]));
 				}
-				double act_EJ5 = cInt(m_ctimeProf, fw, dtps);
+				double act_EJ5 = cInt(m_ctimeProf, m_fw, dtps);
 				std::cout << "Energy check again: Needed:" << m_EJ * 1e3 << "mJ -> Actual:" << act_EJ5 * 1e3 << "mJ" << std::endl;	
 			}
 		}

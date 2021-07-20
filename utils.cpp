@@ -1,6 +1,8 @@
 #include <numbers>
 #include <vector>
 #include <complex>
+#include <iostream>
+#include <fstream>
 #include "utils.h"
 
 double deg2rad(double deg) {
@@ -87,27 +89,28 @@ double get_FWHM(std::vector<std::complex<double>> profile, std::vector<double> w
 // Finds FWHM in indeces, need to scale
 	double max = FindMax(profile);
 	int k1, k2;
-	for (j=0;j<nt;j++) {
-		if (abs(profile[j])<max/2 && abs(profile[j+1])>=max/2) {
+	int nt = profile.size();
+	for (int j=0; j<nt; j++) {
+		if (std::abs(profile[j]) < max / 2 && std::abs(profile[j+1]) >= max / 2) {
 			k1 = j;
 			break;
 		}
 		else k1 = 0;
 	}
-	for (j=nt;j>0;j--) {
-		if (abs(profile[j])<max/2 && abs(profile[j-1])>=max/2) {
+	for (int j=nt; j>0; j--) {
+		if (std::abs(profile[j]) < max / 2 && std::abs(profile[j-1]) >= max / 2) {
 			k2 = j;
 			break;
 		}
 		else k2 = 0;
 	}
-	return abs(wl[k1]-wl[k2]);
+	return std::abs(wl[k1]-wl[k2]);
 }
 
 int writeToFile(const char *ofname, std::vector<double> &data1, std::vector<std::complex<double>> &data2) {
 // Opens a file with name ofname, and outputs complex data
-	ofstream filestr;
-	filestr.open(ofname, ios::out | ios::app);
+	std::ofstream filestr;
+	filestr.open(ofname, std::ios::out | std::ios::app);
 	filestr.precision(15);
 	int nt = data1.size();
 	if (filestr.is_open()) {
@@ -123,8 +126,8 @@ int writeToFile(const char *ofname, std::vector<double> &data1, std::vector<std:
 
 int writeToFile(const char *ofname, std::vector<double> &data1, std::vector<double> &data2) {
 // Opens a file with name ofname, and outputs complex data
-	ofstream filestr;
-	filestr.open(ofname, ios::out | ios::app);
+	std::ofstream filestr;
+	filestr.open(ofname, std::ios::out | std::ios::app);
 	filestr.precision(15);
 	int nt = data1.size();
 	if (filestr.is_open()) {
@@ -137,6 +140,8 @@ int writeToFile(const char *ofname, std::vector<double> &data1, std::vector<doub
 	}
 	filestr.close();
 }
+
+
 /*
 
 
@@ -428,106 +433,7 @@ int nlshift(int krnum, complex<double>* profile, double fw, double n2) {
 	}
 }
 /*=====================================================================*
-// OPA step
-int OPA(complex<double>* Pum, complex<double>* Sig, complex<double>* Idl, int noStep, int cStage, double fwp, double fws, double fwi, int chirpType, int sProf, int pProf, int iProf, complex<double>* sigPhase, complex<double>* idlPhase, complex<double>* pumPhase) {
-// Numerical integration using Runga Kutta 4th sequence
-	cout << "entering OPA" << endl;
-	double act_EJ6, act_EJ7, act_EJ8;
-	complex<double> cds1, cdp1, cdd1, cdk;
-	complex<double> cds2, cdp2, cdd2;
-	complex<double> cds3, cdp3, cdd3;
-	complex<double> cds4, cdp4, cdd4;
-	complex<double> csm1, cpm1, cdm1;
-	complex<double> csm2, cpm2, cdm2;
-	complex<double> csf3, cpf3, cdf3;
-	complex<double> clps, clpp, clpi;
-	imag(clps) = alps; 
-	imag(clpp) = alpp;
-	imag(clpi) = alpi;
-	complex<double>* ez1 = new complex<double>[nt];
-	complex<double>* ez2 = new complex<double>[nt];
 
-	cdk = c1;
-	complex<double> cdkl;
-	for (int m=0;m<noStep;m++){
-		cdkl = cdk;
-		for (j=0;j<nt;j++) {
-			cdk = cdkl;
-			cds1 = clps*Pum[j]*conj(Idl[j])/cdk;
-			cdp1 = clpp*Sig[j]*Idl[j]*cdk;
-			cdd1 = clpi*Pum[j]*conj(Sig[j])/cdk;
-
-			csm1 = Sig[j]+cds1/2.0;
-			cpm1 = Pum[j]+cdp1/2.0;
-			cdm1 = Idl[j]+cdd1/2.0;
-		
-			cdk = cdk*polar(1.0, dk*dzcm*0.5);
-			
-			cds2 = clps*cpm1*conj(cdm1)/cdk;
-			cdp2 = clpp*csm1*cdm1*cdk;
-			cdd2 = clpi*cpm1*conj(csm1)/cdk;
-			
-			csm2 = Sig[j]+cds2/2.0;
-			cpm2 = Pum[j]+cdp2/2.0;
-			cdm2 = Idl[j]+cdd2/2.0;
-			
-			cds3 = clps*cpm2*conj(cdm2)/cdk;
-			cdp3 = clpp*csm2*cdm2*cdk;
-			cdd3 = clpi*cpm2*conj(csm2)/cdk;
-			
-			csf3 = Sig[j]+cds3;
-			cpf3 = Pum[j]+cdp3;
-			cdf3 = Idl[j]+cdd3;
-	
-			cdk = cdk*polar(1.0, dk*dzcm*0.5);
-
-			cds4 = clps*cpf3*conj(cdf3)/cdk;
-			cdp4 = clpp*csf3*cdf3*cdk;
-			cdd4 = clpi*cpf3*conj(csf3)/cdk;
-
-			Pum[j] = Pum[j]+(cdp1+cdp4+2.0*(cdp2+cdp3))/6.0;
-			Sig[j] = Sig[j]+(cds1+cds4+2.0*(cds2+cds3))/6.0;
-			Idl[j] = Idl[j]+(cdd1+cdd4+2.0*(cdd2+cdd3))/6.0;
-
-			if(j==nt/2) {
-				if(cStage==1) {
-					writeToFile("asig1.dat", m, abs(Sig[j])); 
-					writeToFile("apum1.dat", m, abs(Pum[j])); 
-					writeToFile("aidl1.dat", m, abs(Idl[j])); 
-				}
-                else if(cStage==2) {
-					writeToFile("asig2.dat", m, abs(Sig[j]));
-					writeToFile("apum2.dat", m, abs(Pum[j])); 
-					writeToFile("aidl2.dat", m, abs(Idl[j])); 
-				}
-				else {
-					writeToFile("asig3.dat", m, abs(Sig[j]));
-					writeToFile("apum3.dat", m, abs(Pum[j])); 
-					writeToFile("aidl3.dat", m, abs(Idl[j]));
-				}
-			}
-		}
-		cout.precision(15);
-		act_EJ6 = cInt(Pum, fwp);
-		cout << "Energy of Pump:" << act_EJ6*1e3 << "mJ";
-		act_EJ7 = cInt(Sig, fws);
-		cout << "\t\t Signal:" << act_EJ7*1e3 << "mJ";
-		act_EJ8 = cInt(Idl, fwi);
-		cout << "\t\tEnergy of Idler:" << act_EJ8*1e3 << "mJ";
-		cout << "\t\tTotal:" <<  act_EJ6*1e3+act_EJ7*1e3+act_EJ8*1e3 << " mJ" << endl;	
-
-		if(chirpType==1) {
-			disperse(Pum,pumPhase,nt,pProf);
-			disperse(Sig,sigPhase,nt,sProf);
-			disperse(Idl,idlPhase,nt,iProf);
-		}
-		// Calculating non-linear phase shift - function for this at one point.
-		double n2 = nlindx(cCryst);
-		nlshift(cCryst, Pum, fwp, n2);
-		nlshift(cCryst, Sig, fws, n2);
-		nlshift(cCryst, Idl, fwi, n2);	
-	}
-}
 
 
 
