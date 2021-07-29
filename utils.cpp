@@ -141,6 +141,46 @@ int writeToFile(const char *ofname, std::vector<double> &data1, std::vector<doub
 	filestr.close();
 }
 
+/*=====================================================================*
+
+/*=====================================================================*
+double nlindx(int krnum) {
+// Returns non linear index of media in cm2/W
+	double n2;
+	switch(krnum) {
+		case 1: // BBO 
+			n2 = 2.9e-16;
+			break;
+		case 2: // LBO
+			n2 = 1.1e-16;
+			break;
+		case 3: // KDP
+			n2 = 0;
+			errorhl(3);
+			break;
+	}
+	return n2;
+}
+/*=====================================================================*
+int nlshift(int krnum, complex<double>* profile, double fw, double n2) {
+// Nonlinear phase shift
+	double phaze;
+	double dphmax = 0, wcm2mx = 0;
+	complex<double> pfj;
+	double wcm2, dphas;
+	phaze = tPi*n2*dzcm*1.e7/pLambda_nm;
+	for (j=0;j<nt;j++) {
+		pfj = profile[j];
+		wcm2 = fw/Xcm2*pow((abs(pfj)),2);
+		dphas = phaze*wcm2;
+		if(dphas>dphmax)
+			dphmax = dphas;
+		if(wcm2>wcm2mx)
+			wcm2mx = wcm2;
+		profile[j] = pfj*polar(1.0,-dphas);
+	}
+}
+/*=====================================================================*
 
 /*
 
@@ -369,70 +409,6 @@ int chirper_direct(complex<double> *timeProfile, int size, double chp1, double c
 
 /*=====================================================================*
 
-/*=====================================================================*
-int disperse(complex<double> *profile, complex<double> *phase, int nt, int proftype) {
-// Applies dispersive phase
-//fix: proftype not needed - remove
-	complex<double>* spek;
-	spek = new complex<double>[nt];
-	fftshift(profile,nt);
-	fftw_plan p = fftw_plan_dft_1d(nt,reinterpret_cast<fftw_complex*>(profile),reinterpret_cast<fftw_complex*>(spek),FFTW_BACKWARD,FFTW_ESTIMATE);
-	fftw_execute(p);
-	for (j=0;j<nt;j++) {
-		real(spek[j]) = real(spek[j])/sqrt(nt); 
-		imag(spek[j]) = imag(spek[j])/sqrt(nt); 
-	}
-	fftshift(phase,nt);
-	for (j=0;j<nt;j++) {
-		spek[j] = spek[j]*phase[j]; 
-	}
-	fftshift(phase,nt);
-	fftw_plan p2 = fftw_plan_dft_1d(nt,reinterpret_cast<fftw_complex*>(spek),reinterpret_cast<fftw_complex*>(profile),FFTW_FORWARD,FFTW_ESTIMATE);
-	fftw_execute(p2);
-	for (j=0;j<nt;j++) {
-		real(profile[j]) = real(profile[j])/sqrt(nt); 
-		imag(profile[j]) = imag(profile[j])/sqrt(nt); 
-	}
-	fftshift(profile,nt);
-}
-/*=====================================================================*
-double nlindx(int krnum) {
-// Returns non linear index of media in cm2/W
-	double n2;
-	switch(krnum) {
-		case 1: // BBO 
-			n2 = 2.9e-16;
-			break;
-		case 2: // LBO
-			n2 = 1.1e-16;
-			break;
-		case 3: // KDP
-			n2 = 0;
-			errorhl(3);
-			break;
-	}
-	return n2;
-}
-/*=====================================================================*
-int nlshift(int krnum, complex<double>* profile, double fw, double n2) {
-// Nonlinear phase shift
-	double phaze;
-	double dphmax = 0, wcm2mx = 0;
-	complex<double> pfj;
-	double wcm2, dphas;
-	phaze = tPi*n2*dzcm*1.e7/pLambda_nm;
-	for (j=0;j<nt;j++) {
-		pfj = profile[j];
-		wcm2 = fw/Xcm2*pow((abs(pfj)),2);
-		dphas = phaze*wcm2;
-		if(dphas>dphmax)
-			dphmax = dphas;
-		if(wcm2>wcm2mx)
-			wcm2mx = wcm2;
-		profile[j] = pfj*polar(1.0,-dphas);
-	}
-}
-/*=====================================================================*
 
 
 

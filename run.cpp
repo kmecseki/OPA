@@ -289,7 +289,7 @@ int main(int argc, char *argv[]) {
 	stage1->setPhaseVel(dw, nColl_deg, nPumj, nSigj, nIdlj, &gtdPum, &gtdSig, &gtdIdl);
 
 	std::vector<std::complex<double>> cPhiPumj, cPhiSigj, cPhiIdlj;
-	stage1->makePhaseRelative(frame, dw, gtdSig, gtdPum, gtdIdl, phiPumj, phiSigj, phiIdlj, cPhiPumj, cPhiSigj, cPhiIdlj);
+	stage1->makePhaseRelative(frame, dw, gtdSig, gtdPum, gtdIdl, Pump1, Signal1, Idler1);
 
 	/*=====================================================================*/
 	// Create pulses
@@ -407,6 +407,6 @@ int main(int argc, char *argv[]) {
 	std::cout << "Calculating Idler spectrum" << std::endl;
 	Idler1->spectrum("output//Spec_idl.dat");
 
-	OPA(timeProfPum, timeProfSig, timeProfIdl, noStep, cStage, fwp, fws, fwi, chirpType, sProf, pProf, iProf, cPhiSigj, cPhiIdlj, cPhiPumj, cStage-1);
+	stage1->OPA(Pump1, Signal1, Idler1, dtps, chirpType); //timeProfPum, timeProfSig, timeProfIdl, noStep, cStage, fwp, fws, fwi, chirpType, sProf, pProf, iProf, cPhiSigj, cPhiIdlj, cPhiPumj, cStage-1);
 }
 

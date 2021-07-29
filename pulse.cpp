@@ -28,23 +28,23 @@ Crystal::Crystal(int ctype, int stage, int noStep, double thdeg, double cryslth,
     }
 
 double Crystal::calc_xeff() {
-			switch(m_cType) {
-				case 1: 
-					std::cout << "\n\n*********************************************\n";
-					std::cout << "Stage " << m_stage << ": BBO" << std::endl;
-					std::cout << "*********************************************" << std::endl;
-					return 4.04;
-				case 2: 
-					std::cout << "\n\n*********************************************\n";
-					std::cout << "Stage " << m_stage << ": LBO" << std::endl;
-					std::cout << "*********************************************" << std::endl;
-					return 1.676;
-				case 3: 
-					std::cout << "Error: KDP not fully supported yet!" << std::endl;
-					return 0;
-			}
+	switch(m_cType) {
+		case 1: 
+			std::cout << "\n\n*********************************************\n";
+			std::cout << "Stage " << m_stage << ": BBO" << std::endl;
+			std::cout << "*********************************************" << std::endl;
+			return 4.04;
+		case 2: 
+			std::cout << "\n\n*********************************************\n";
+			std::cout << "Stage " << m_stage << ": LBO" << std::endl;
+			std::cout << "*********************************************" << std::endl;
+			return 1.676;
+		case 3: 
+			std::cout << "Error: KDP not fully supported yet!" << std::endl;
 			return 0;
-		}
+	}
+	return 0;
+}
 
 double Crystal::calcRefInd(double lambda, int oe) {
 	// Returns the refractive index.
@@ -58,89 +58,89 @@ double Crystal::calcRefInd(double lambda, int oe) {
 	int warned = 0;
 	switch(m_cType) {
 		case 1: // BBO - transparency 0.189 to 3.5	
-				min = 0.189;
-				max = 3.5;
-				if (lambda < min || lambda > max) {
-					if (warned==0) {
-						std::cout << "Warning: Wavelength outside transmission window" << std::endl;
-						warned = 1;
-					}
-					if (lambda < min) lambda = min;
-					else lambda = max;
+			min = 0.189;
+			max = 3.5;
+			if (lambda < min || lambda > max) {
+				if (warned==0) {
+					std::cout << "Warning: Wavelength outside transmission window" << std::endl;
+					warned = 1;
 				}
-				if (oe != 1) { // From Dmitriev
-					p1 = 2.7359;
-					p2 = 0.01878;
-					p3 = 0.01822;
-					p4 = -0.01354;
-				}
-				else {
-					p1 = 2.3753;
-					p2 = 0.01224;
-					p3 = 0.01667;
-					p4 = -0.01516;
-				}
-				return std::sqrt(p1+p2/(lambda*lambda-p3)+p4*lambda*lambda);
+				if (lambda < min) lambda = min;
+				else lambda = max;
+			}
+			if (oe != 1) { // From Dmitriev
+				p1 = 2.7359;
+				p2 = 0.01878;
+				p3 = 0.01822;
+				p4 = -0.01354;
+			}
+			else {
+				p1 = 2.3753;
+				p2 = 0.01224;
+				p3 = 0.01667;
+				p4 = -0.01516;
+			}
+			return std::sqrt(p1+p2/(lambda*lambda-p3)+p4*lambda*lambda);
 		case 2: // LBO - transparency 0.155 to 3.2	
-				// Using XY plane
-				min = 0.155;
-				max = 3.2;
-				if (lambda < min || lambda > max) {
-					if (warned==0) {
-						std::cout << "Warning: Wavelength outside transmission window" << std::endl;
-						warned = 1;
-					}
-					if (lambda < min) lambda = min;
-					else lambda = max;
+			// Using XY plane
+			min = 0.155;
+			max = 3.2;
+			if (lambda < min || lambda > max) {
+				if (warned==0) {
+					std::cout << "Warning: Wavelength outside transmission window" << std::endl;
+					warned = 1;
 				}
-				if (oe == 1) {
-					p1 = 2.4542;
-					p2 = 0.01125;
-					p3 = 0.01135;
-					p4 = -0.01388;
-				}
-				else if (oe == 2) {
-					p1 = 2.5390;
-					p2 = 0.01277;
-					p3 = 0.01189;
-					p4 = -0.01848;
-				}
-				else if (oe == 3) {
-					p1 = 2.5865;
-					p2 = 0.01310;
-					p3 = 0.01223;
-					p4 = -0.01861;
-				}
-				return sqrt(p1+p2/(lambda*lambda-p3)+p4*lambda*lambda);
+				if (lambda < min) lambda = min;
+				else lambda = max;
+			}
+			if (oe == 1) {
+				p1 = 2.4542;
+				p2 = 0.01125;
+				p3 = 0.01135;
+				p4 = -0.01388;
+			}
+			else if (oe == 2) {
+				p1 = 2.5390;
+				p2 = 0.01277;
+				p3 = 0.01189;
+				p4 = -0.01848;
+			}
+			else if (oe == 3) {
+				p1 = 2.5865;
+				p2 = 0.01310;
+				p3 = 0.01223;
+				p4 = -0.01861;
+			}
+			return sqrt(p1+p2/(lambda*lambda-p3)+p4*lambda*lambda);
 		case 3: // KDP - not fully supported yet
-				// Transparency 0.174 to 1.57
+			// Transparency 0.174 to 1.57
 			/*  min = 0.174;
-				max = 1.57;
-				if (lambda < min || lambda > max) {
-					if (warned==0) {
-						std::cout << "Warning: Wavelength outside transmission window" << std::endl;
-						warned = 1;
-					}
-					if (lambda < min) lambda = min;
-					else lambda = max;
-					lambdax = lambda*lambda;
+			max = 1.57;
+			if (lambda < min || lambda > max) {
+				if (warned==0) {
+					std::cout << "Warning: Wavelength outside transmission window" << std::endl;
+					warned = 1;
 				}
-				if (oe != 1) {
-					p1=2.259276;
-					p2=0.01008956;
-					p3=0.012942625;
-					p4=13.00522;
-					p5=400;
-				}
-				else {
-					p1=2.132668;
-					p2=0.008637494;
-					p3=0.012281043;
-					p4=3.2279924;
-					p5=400;
-				}
-				refInd = sqrt(p1+p2/(lambda*lambda-p3)+p4*lambda*lambda/(lambda*lambda-p5)); */
-				return 0;
+				if (lambda < min) lambda = min;
+				else lambda = max;
+				lambdax = lambda*lambda;
+			}
+			if (oe != 1) {
+				p1=2.259276;
+				p2=0.01008956;
+				p3=0.012942625;
+				p4=13.00522;
+				p5=400;
+			}
+			else {
+				p1=2.132668;
+				p2=0.008637494;
+				p3=0.012281043;
+				p4=3.2279924;
+				p5=400;
+			}
+			refInd = sqrt(p1+p2/(lambda*lambda-p3)+p4*lambda*lambda/(lambda*lambda-p5)); */
+			return 0;
 	}
 }
 
@@ -282,10 +282,10 @@ void Crystal::setPhaseVel(double dw, double nColl_deg, std::vector<double> nPumj
 		//if (mode!=1) exit(0); Legacy
 }
 
-void Crystal::makePhaseRelative(const int frame, const double dw, const double gtdSig, const double gtdPum, const double gtdIdl, std::vector<double> &phiPumj, std::vector<double> &phiSigj, std::vector<double> &phiIdlj, std::vector<std::complex<double>> &cPhiPumj, std::vector<std::complex<double>> &cPhiSigj, std::vector<std::complex<double>> &cPhiIdlj) {
+void Crystal::makePhaseRelative(const int frame, const double dw, const double gtdSig, const double gtdPum, const double gtdIdl, Pulse &Pump, Pulse &Signal, Pulse &Idler) {
 	// Local time frame selection
 	// negative sign because of: gtd = -d(phi)/domega to ensure spatial phase of form exp(-ikz)
-	int nt = phiPumj.size();
+	int nt = Pump.m_ctimeProf.size();
 	double dphm;
 	switch (frame) {
 		case 1:
@@ -300,18 +300,18 @@ void Crystal::makePhaseRelative(const int frame, const double dw, const double g
 		default:
 			std::cout << "Error: iframe value can be only 1,2 or 3" << std::endl;
 	}
-	double phiPumjh = phiPumj[nt/2];
-	double phiSigjh = phiSigj[nt/2];
-	double phiIdljh = phiIdlj[nt/2];
+	double phiPumjh = Pump.m_Phij[nt/2];
+	double phiSigjh = Signal.m_Phij[nt/2];
+	double phiIdljh = Idler.m_Phij[nt/2];
 	// Remove central phases and phase gradients
 	using namespace std::complex_literals;
 	for (int j=0; j<nt; j++) {
-		phiPumj[j] = phiPumj[j] * 1e4 - (j - nt / 2) * dphm * 1e3 - phiPumjh * 1e4;
-		phiSigj[j] = phiSigj[j] * 1e4 - (j - nt / 2) * dphm * 1e3 - phiSigjh * 1e4;
-		phiIdlj[j] = phiIdlj[j] * 1e4 - (j - nt / 2) * dphm * 1e3 - phiIdljh * 1e4;
-		cPhiPumj.push_back(std::polar(1.0, phiPumj[j])); // TODO: add this to pulse class
-		cPhiSigj.push_back(std::polar(1.0, phiSigj[j]));
-		cPhiIdlj.push_back(std::exp(1i * phiIdlj[j])); //does the same, as it should tested
+		Pump.m_Phij[j] = Pump.m_Phij[j] * 1e4 - (j - nt / 2) * dphm * 1e3 - phiPumjh * 1e4;
+		Signal.m_Phij[j] = Signal.m_Phij[j] * 1e4 - (j - nt / 2) * dphm * 1e3 - phiSigjh * 1e4;
+		Idler.m_Phij[j] = Idler.m_Phij[j] * 1e4 - (j - nt / 2) * dphm * 1e3 - phiIdljh * 1e4;
+		Pump.m_cPhij[j] = std::polar(1.0, Pump.m_Phij[j]); // TODO: add this to pulse class
+		Signal.m_cPhij[j] = std::polar(1.0, Signal.m_Phij[j]);
+		Idler.m_cPhij[j] = std::exp(1i * Idler.m_Phij[j]); //does the same, as it should tested
 	}
 	// TODO: attempt to zero pump, but it is not used anywhere. removed for now.
 	//m_cPum = 0;
@@ -322,7 +322,7 @@ void Crystal::makePhaseRelative(const int frame, const double dw, const double g
 }
 
 // OPA step
-int Crystal::OPA(Pulse &Pum, Pulse &Sig, Pulse &Idl, double dtps) {
+int Crystal::OPA(Pulse &Pum, Pulse &Sig, Pulse &Idl, double dtps, int chirpType) {
 
 	//(complex<double>* Pum, complex<double>* Sig, complex<double>* Idl, int noStep, int cStage, double fwp, double fws, double fwi, int chirpType, int sProf, int pProf, int iProf, complex<double>* sigPhase, complex<double>* idlPhase, complex<double>* pumPhase) {
 	// Numerical integration using Runga Kutta 4th sequence
@@ -412,9 +412,9 @@ int Crystal::OPA(Pulse &Pum, Pulse &Sig, Pulse &Idl, double dtps) {
 		std::cout << "\t\tTotal:" <<  act_EJ6 * 1e3 + act_EJ7 * 1e3 + act_EJ8 * 1e3 << " mJ" << std::endl;	
 
 		if(chirpType==1) {
-			disperse(Pum.m_ctimeProf,pumPhase,nt,pProf);
-			disperse(Sig,sigPhase,nt,sProf);
-			disperse(Idl,idlPhase,nt,iProf);
+			Pum.disperse();
+			Sig.disperse();
+			Idl.disperse();
 		}
 		// Calculating non-linear phase shift - function for this at one point.
 		double n2 = nlindx(cCryst);
@@ -750,4 +750,39 @@ int Pulse::spectrum(const char *ofname) {
     FWHM = get_FWHM(spek, m_lambdaj); // This can be written out if needed. - not tested
     std::cout << "FWHM : " << FWHM << " nm" << std::endl;
     writeToFile(ofname, m_lambdaj, tempspek);    
+}
+
+int Pulse::disperse() {
+	// Applies dispersive phase
+
+	int nt = m_ctimeProf.size();
+	fftw_complex out[nt];
+	fftw_complex in[nt];
+	std::vector<std::complex<double>> spek(nt);
+
+	fftshift(m_ctimeProf, nt);
+	cvector_to_fftw(nt, m_ctimeProf, in);
+	fftw_plan p = fftw_plan_dft_1d(nt, in, out, FFTW_BACKWARD, FFTW_ESTIMATE);
+	fftw_execute(p);
+	fftw_to_cvector(nt, out, spek);
+	for (int j=0; j<nt; j++) {
+		spek[j].real(spek[j].real() / std::sqrt(nt)); 
+		spek[j].imag(spek[j].imag() / std::sqrt(nt)); 
+	}
+
+	fftshift(m_cPhij, nt);
+	for (int j=0; j<nt; j++) {
+		spek[j] = spek[j] * m_cPhij[j]; 
+	}
+	fftshift(m_cPhij, nt);
+
+	cvector_to_fftw(nt, spek, in);
+	fftw_plan p2 = fftw_plan_dft_1d(nt, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
+	fftw_execute(p2);
+	fftw_to_cvector(nt, out, m_ctimeProf);
+	for (int j=0; j<nt; j++) {
+		m_ctimeProf[j].real(m_ctimeProf[j].real() / std::sqrt(nt)); 
+		m_ctimeProf[j].real(m_ctimeProf[j].imag() / std::sqrt(nt)); 
+	}
+	fftshift(m_ctimeProf, nt);
 }

@@ -53,8 +53,8 @@ class Crystal {
 		double calcPumCo(double);
 		void calc_PM(double, double, bool);
 		void setPhaseVel(const double, double, std::vector<double>, std::vector<double>, std::vector<double>, double*, double*, double*);
-		void makePhaseRelative(const int, const double, const double, const double, const double, std::vector<double>&, std::vector<double>&, std::vector<double>&, std::vector<std::complex<double>>&, std::vector<std::complex<double>>&, std::vector<std::complex<double>>&);
-		int OPA(Pulse &Pum, Pulse &Sig, Pulse &Idl, double dtps);
+		void makePhaseRelative(const int, const double, const double, const double, const double, Pulse&, Pulse&, Pulse&);
+		int OPA(Pulse &Pum, Pulse &Sig, Pulse &Idl, double dtps, int chirpType);
 	private:
 		double calc_xeff();
 };
@@ -78,6 +78,8 @@ class Pulse {
 		double m_kv;
 		double m_alp;
 		double m_fw;
+		std::vector<std::complex<double>> m_cPhij;
+		std::vector<double> m_Phij;
 		std::vector<double> m_lambdaj;
 		std::vector<double> m_absTP;
 		std::vector<std::complex<double>> m_ctimeProf;
@@ -88,6 +90,7 @@ class Pulse {
 		double rInt(double dtps);
 		double cInt(std::vector<std::complex<double>>, double, double);
 		int spectrum(const char *ofname);
+		int disperse();
 		// TODO: Move private functions over to private (check)
 	private:
 		int chirper_norm(std::vector<std::complex<double>>&, int, double, double, double);
