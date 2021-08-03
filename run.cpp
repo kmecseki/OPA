@@ -242,9 +242,6 @@ int main(int argc, char *argv[]) {
 	std::vector<double> nPumj(nt);
 	std::vector<double> nSigj(nt);
 	std::vector<double> nIdlj(nt);
-	std::vector<double> phiPumj(nt);
-	std::vector<double> phiSigj(nt);
-	std::vector<double> phiIdlj(nt);
 
 	for (int j=0; j<nt; j++) {
 		kvPumj = 2 * std::numbers::pi * 1e3 / Pump1->m_lam2 + j * dk_grid; // microns
@@ -261,21 +258,21 @@ int main(int argc, char *argv[]) {
 		nSigj[j] = stage1->calcRefInd(Signal1->m_lambdaj[j], 3);
 		nIdlj[j] = stage1->calcRefInd(Idler1->m_lambdaj[j], 3); // going backwards
 
-		phiPumj[j] = -kvPumj * stage1->m_dzcm * nPumj[j];
-		phiSigj[j] = -kvSigj * stage1->m_dzcm * nSigj[j] * std::cos(deg2rad(nColl_deg));
+		Pump1->m_Phij[j] = -kvPumj * stage1->m_dzcm * nPumj[j];
+		Signal1->m_Phij[j] = -kvSigj * stage1->m_dzcm * nSigj[j] * std::cos(deg2rad(nColl_deg));
 		double gamsij = kvSigj * nSigj[j] * std::sin(deg2rad(nColl_deg)) / (kvIdlj * nIdlj[j]);
 		if(abs(gamsij)<=1.0)
-			phiIdlj[j] = -kvIdlj * stage1->m_dzcm * nIdlj[j] * std::cos(std::asin(gamsij));
-		else phiIdlj[j] = 0;
+			Idler1->m_Phij[j] = -kvIdlj * stage1->m_dzcm * nIdlj[j] * std::cos(std::asin(gamsij));
+		else Idler1->m_Phij[j] = 0;
 	}
 
 	// TODO: New idler handling, uncomment this section for original idler handling
 	std::vector<double> temp(nt);
 	for (int j=0; j<nt; j++) {
-		temp[j] = phiIdlj[nt-1-j];
+		temp[j] = Idler1->m_Phij[nt-1-j];
 	}
 	for (int j=0; j<nt; j++) {
-		phiIdlj[j] = temp[j];
+		Idler1->m_Phij[j] = temp[j];
 	}
 	for (int j=0; j<nt; j++) {
 		temp[j] = nIdlj[nt-1-j];
@@ -289,8 +286,8 @@ int main(int argc, char *argv[]) {
 	stage1->setPhaseVel(dw, nColl_deg, nPumj, nSigj, nIdlj, &gtdPum, &gtdSig, &gtdIdl);
 
 	std::vector<std::complex<double>> cPhiPumj, cPhiSigj, cPhiIdlj;
-	stage1->makePhaseRelative(frame, dw, gtdSig, gtdPum, gtdIdl, Pump1, Signal1, Idler1);
-
+	stage1->makePhaseRelative(frame, dw, gtdSig, gtdPum, gtdIdl, *Pump1, *Signal1, *Idler1);
+		std::cout << "YOOOO" << std::endl;
 	/*=====================================================================*/
 	// Create pulses
 	std::cout <<  "\n\n*********************************************";
@@ -407,6 +404,6 @@ int main(int argc, char *argv[]) {
 	std::cout << "Calculating Idler spectrum" << std::endl;
 	Idler1->spectrum("output//Spec_idl.dat");
 
-	stage1->OPA(Pump1, Signal1, Idler1, dtps, chirpType); //timeProfPum, timeProfSig, timeProfIdl, noStep, cStage, fwp, fws, fwi, chirpType, sProf, pProf, iProf, cPhiSigj, cPhiIdlj, cPhiPumj, cStage-1);
+	stage1->OPA(*Pump1, *Signal1, *Idler1, dtps, chirpType);
 }
 

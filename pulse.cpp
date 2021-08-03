@@ -53,7 +53,7 @@ double Crystal::calcRefInd(double lambda, int oe) {
 	// biaxial crystal: oe = 1 for x, oe = 2 for y, oe = 3 for z planes
 
 	double min, max;
-	double p1, p2, p3, p4, p5;
+	double p1, p2, p3, p4;
 	lambda = lambda / 1e3; // convert to microns
 	int warned = 0;
 	switch(m_cType) {
@@ -80,7 +80,7 @@ double Crystal::calcRefInd(double lambda, int oe) {
 				p3 = 0.01667;
 				p4 = -0.01516;
 			}
-			return std::sqrt(p1+p2/(lambda*lambda-p3)+p4*lambda*lambda);
+			return std::sqrt(p1 + p2 / (lambda * lambda - p3) + p4 * lambda * lambda);
 		case 2: // LBO - transparency 0.155 to 3.2	
 			// Using XY plane
 			min = 0.155;
@@ -111,7 +111,7 @@ double Crystal::calcRefInd(double lambda, int oe) {
 				p3 = 0.01223;
 				p4 = -0.01861;
 			}
-			return sqrt(p1+p2/(lambda*lambda-p3)+p4*lambda*lambda);
+			return sqrt(p1 + p2 / (lambda * lambda - p3) + p4 * lambda * lambda);
 		case 3: // KDP - not fully supported yet
 			// Transparency 0.174 to 1.57
 			/*  min = 0.174;
@@ -263,11 +263,12 @@ void Crystal::setPhaseVel(double dw, double nColl_deg, std::vector<double> nPumj
 		if (gVelSig/gVelIdl>=1) 
 			std::cout << "No bandwidth optimised alpha exists" << std::endl;
 		else {
-			double beta2, alpha2, alpha3, nPumOpt, theOpt;
+			double beta2, alpha3;
+			double nPumOpt, theOpt;
 			beta2 = std::acos(gVelSig / gVelIdl);
 			// From Ross(16) - good approx to the optimal noncoll angle, it will
 			// coincide with alpha at optimal phase matching
-			alpha2 = rad2deg(std::asin(m_kIdl/m_knPum) * std::sin(beta2));
+			//alpha2 = rad2deg(std::asin(m_kIdl/m_knPum) * std::sin(beta2));
 			// Calculated from Geoff's formula, preferable to Ross(16), as it
 			// does not depend on knPum, which is weakly dependent on theta
 			alpha3 = std::atan(std::sin(beta2) / (m_kSig / m_kIdl + std::cos(beta2)));
@@ -322,13 +323,13 @@ void Crystal::makePhaseRelative(const int frame, const double dw, const double g
 }
 
 // OPA step
-int Crystal::OPA(Pulse &Pum, Pulse &Sig, Pulse &Idl, double dtps, int chirpType) {
+void Crystal::OPA(Pulse &Pum, Pulse &Sig, Pulse &Idl, double dtps, int chirpType) {
 
 	//(complex<double>* Pum, complex<double>* Sig, complex<double>* Idl, int noStep, int cStage, double fwp, double fws, double fwi, int chirpType, int sProf, int pProf, int iProf, complex<double>* sigPhase, complex<double>* idlPhase, complex<double>* pumPhase) {
 	// Numerical integration using Runga Kutta 4th sequence
 	std::cout << "entering OPA" << std::endl;
 	//double act_EJ6, act_EJ7, act_EJ8;
-	std::complex<double> cds1, cdp1, cdd1, cdk;
+	std::complex<double> cds1, cdp1, cdd1;
 	std::complex<double> cds2, cdp2, cdd2;
 	std::complex<double> cds3, cdp3, cdd3;
 	std::complex<double> cds4, cdp4, cdd4;
@@ -417,11 +418,29 @@ int Crystal::OPA(Pulse &Pum, Pulse &Sig, Pulse &Idl, double dtps, int chirpType)
 			Idl.disperse();
 		}
 		// Calculating non-linear phase shift - function for this at one point.
-		double n2 = nlindx(cCryst);
-		nlshift(cCryst, Pum.m_ctimeProf, fwp, n2);
-		nlshift(cCryst, Sig, fws, n2);
-		nlshift(cCryst, Idl, fwi, n2);	
+		double n2 = nlindx(m_cType);
+		Pum.nlshift(m_cType, n2, m_dzcm);
+		Sig.nlshift(m_cType, n2, m_dzcm);
+		Idl.nlshift(m_cType, n2, m_dzcm);	
 	}
+}
+
+double Crystal::nlindx(int krnum) {
+	// Takes an int with crystal number, and returns the non linear index of media in cm2/W
+	double n2;
+	switch(krnum) {
+		case 1: // BBO 
+			n2 = 2.9e-16;
+			break;
+		case 2: // LBO
+			n2 = 1.1e-16;
+			break;
+		default: // KDP or something else
+			n2 = 0;
+			std::cout << "Error: Unsupported crystal type. (KDP not supported yet)" << std::endl;
+			exit(0);
+	}
+	return n2;
 }
 
 Pulse::Pulse(double dtL, double dtT, double EJ, double Xcm2, double tc, int prof, int nt) :
@@ -434,7 +453,9 @@ Pulse::Pulse(double dtL, double dtT, double EJ, double Xcm2, double tc, int prof
 	m_nt(nt),
 	m_absTP(nt),
 	m_ctimeProf(nt),
-	m_lambdaj(nt)
+	m_lambdaj(nt),
+	m_Phij(nt),
+	m_cPhij(nt)
 	{}
 
 double Pulse::calc_omega0() {
@@ -462,7 +483,7 @@ double Pulse::cInt(std::vector<std::complex<double>> cfield, double fww, double 
 // Calculates energy within an intensity profile - given complex field
 	double area = 0;
 	int nt = cfield.size();
-	std::cout << "cfield size CHECK" << nt << std::endl;
+	//std::cout << "cfield size CHECK" << nt << std::endl;
 	for (int j=0; j<nt; j++) {
 		area = area + std::pow(std::abs(cfield[j]), 2);
 	}
@@ -727,20 +748,22 @@ int Pulse::chirper_direct(std::vector<std::complex<double>> &timeProfile, double
 	}
 }
 
-int Pulse::spectrum(const char *ofname) {
+void Pulse::spectrum(const char *ofname) {
 // This function calculates the pulse spectrum, FWHM, and writes into file
 	int nt = m_ctimeProf.size();
 	std::vector<std::complex<double>> spek(nt);
 	std::vector<double> tempspek(nt);
 	double FWHM;
-	fftw_complex timeProf2[nt];
+	fftw_complex *timeProf2 = new fftw_complex[nt];
 	cvector_to_fftw(nt, m_ctimeProf, timeProf2);
-	fftw_complex spek2[nt];
-	cvector_to_fftw(nt, spek, spek2);
+	fftw_complex *spek2 = new fftw_complex[nt];
+	//cvector_to_fftw(nt, spek, spek2);
 	fftw_plan p = fftw_plan_dft_1d(nt, timeProf2, spek2, FFTW_BACKWARD, FFTW_ESTIMATE);
 	fftw_execute(p);
+	delete timeProf2;
 	fftw_destroy_plan(p);
 	fftw_to_cvector(nt, spek2, spek);
+	delete spek2;
 	if (m_prof!=0)
 		fftshift(spek,nt);
 	for (int j=0; j<nt; j++) {
@@ -785,4 +808,24 @@ int Pulse::disperse() {
 		m_ctimeProf[j].real(m_ctimeProf[j].imag() / std::sqrt(nt)); 
 	}
 	fftshift(m_ctimeProf, nt);
+}
+
+void Pulse::nlshift(int krnum, double n2, double dzcm) {
+	// Nonlinear phase shift
+	double phaze;
+	double dphmax = 0;
+	double wcm2mx = 0;
+	double wcm2;
+	double dphas;
+	int nt = m_ctimeProf.size();
+	phaze = 2 * std::numbers::pi * n2 * dzcm * 1.e7 / m_wavelength;
+	for (auto j=0; j<nt; j++) {
+		wcm2 = m_fw / m_Xcm2 * std::pow((std::abs(m_ctimeProf[j])),2);
+		dphas = phaze * wcm2;
+		if(dphas>dphmax)
+			dphmax = dphas;
+		if(wcm2>wcm2mx)
+			wcm2mx = wcm2;
+		m_ctimeProf[j] = m_ctimeProf[j] * std::polar(1.0, -dphas);
+	}
 }

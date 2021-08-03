@@ -2,7 +2,7 @@
 CXX = g++
 
 # Compiler flags
-CXXFLAGS = -std=c++20 -O2 -Wall -Wextra -pedantic
+CXXFLAGS = -std=c++20 -O2 -Wall -Wextra -pedantic -g
 
 # Libraries
 LIBS = -lgsl -lgslcblas -lfftw3 -static

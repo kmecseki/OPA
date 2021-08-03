@@ -4,6 +4,7 @@
 #include <complex>
 #include <vector>
 
+class Pulse;
 /*=====================================================================*/
 // Group chirp data
 struct chirp {
@@ -54,9 +55,10 @@ class Crystal {
 		void calc_PM(double, double, bool);
 		void setPhaseVel(const double, double, std::vector<double>, std::vector<double>, std::vector<double>, double*, double*, double*);
 		void makePhaseRelative(const int, const double, const double, const double, const double, Pulse&, Pulse&, Pulse&);
-		int OPA(Pulse &Pum, Pulse &Sig, Pulse &Idl, double dtps, int chirpType);
+		void OPA(Pulse &Pum, Pulse &Sig, Pulse &Idl, double dtps, int chirpType);
 	private:
 		double calc_xeff();
+		double nlindx(int);
 };
     
 /*=====================================================================*/
@@ -89,8 +91,9 @@ class Pulse {
 		void GenProfile(Crystal&, double, double, int, double, double, double, double, double);
 		double rInt(double dtps);
 		double cInt(std::vector<std::complex<double>>, double, double);
-		int spectrum(const char *ofname);
+		void spectrum(const char *ofname);
 		int disperse();
+		void nlshift(int, double, double);	
 		// TODO: Move private functions over to private (check)
 	private:
 		int chirper_norm(std::vector<std::complex<double>>&, int, double, double, double);

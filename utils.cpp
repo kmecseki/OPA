@@ -30,7 +30,7 @@ void fftw_to_cvector(int nt, fftw_complex* in, std::vector<std::complex<double>>
 	}
 }
 
-int fftshift(std::vector<std::complex<double>> &vekt, int size) {
+void fftshift(std::vector<std::complex<double>> &vekt, int size) {
 // FFT-shift
 	std::complex<double> temp, temp2;
 	for(int j=0; j<size/4; j++){
@@ -43,7 +43,7 @@ int fftshift(std::vector<std::complex<double>> &vekt, int size) {
 	}
 }
 
-int fftshift(fftw_complex* vekt, int size) {
+void fftshift(fftw_complex* vekt, int size) {
 // FFT-shift
 	fftw_complex temp;
 	fftw_complex temp2;
@@ -74,7 +74,7 @@ double FindMax(std::vector<double> &vek) {
 	return maxi;
 }
 
-double FindMax(std::vector<std::complex<double>> &vek) {
+double FindMax(const std::vector<std::complex<double>> &vek) {
 // Finds maximum of the complex vector 'vek'.
 	int size = vek.size();
 	double maxi=0;
@@ -85,7 +85,7 @@ double FindMax(std::vector<std::complex<double>> &vek) {
 	return maxi;
 }
 
-double get_FWHM(std::vector<std::complex<double>> profile, std::vector<double> wl) {
+double get_FWHM(const std::vector<std::complex<double>> &profile, std::vector<double> wl) {
 // Finds FWHM in indeces, need to scale
 	double max = FindMax(profile);
 	int k1, k2;
@@ -107,7 +107,7 @@ double get_FWHM(std::vector<std::complex<double>> profile, std::vector<double> w
 	return std::abs(wl[k1]-wl[k2]);
 }
 
-int writeToFile(const char *ofname, std::vector<double> &data1, std::vector<std::complex<double>> &data2) {
+void writeToFile(const char *ofname, std::vector<double> &data1, std::vector<std::complex<double>> &data2) {
 // Opens a file with name ofname, and outputs complex data
 	std::ofstream filestr;
 	filestr.open(ofname, std::ios::out | std::ios::app);
@@ -124,7 +124,7 @@ int writeToFile(const char *ofname, std::vector<double> &data1, std::vector<std:
 	filestr.close();
 }
 
-int writeToFile(const char *ofname, std::vector<double> &data1, std::vector<double> &data2) {
+void writeToFile(const char *ofname, std::vector<double> &data1, std::vector<double> &data2) {
 // Opens a file with name ofname, and outputs complex data
 	std::ofstream filestr;
 	filestr.open(ofname, std::ios::out | std::ios::app);
@@ -141,124 +141,14 @@ int writeToFile(const char *ofname, std::vector<double> &data1, std::vector<doub
 	filestr.close();
 }
 
-/*=====================================================================*
-
-/*=====================================================================*
-double nlindx(int krnum) {
-// Returns non linear index of media in cm2/W
-	double n2;
-	switch(krnum) {
-		case 1: // BBO 
-			n2 = 2.9e-16;
-			break;
-		case 2: // LBO
-			n2 = 1.1e-16;
-			break;
-		case 3: // KDP
-			n2 = 0;
-			errorhl(3);
-			break;
-	}
-	return n2;
-}
-/*=====================================================================*
-int nlshift(int krnum, complex<double>* profile, double fw, double n2) {
-// Nonlinear phase shift
-	double phaze;
-	double dphmax = 0, wcm2mx = 0;
-	complex<double> pfj;
-	double wcm2, dphas;
-	phaze = tPi*n2*dzcm*1.e7/pLambda_nm;
-	for (j=0;j<nt;j++) {
-		pfj = profile[j];
-		wcm2 = fw/Xcm2*pow((abs(pfj)),2);
-		dphas = phaze*wcm2;
-		if(dphas>dphmax)
-			dphmax = dphas;
-		if(wcm2>wcm2mx)
-			wcm2mx = wcm2;
-		profile[j] = pfj*polar(1.0,-dphas);
-	}
-}
-/*=====================================================================*
 
 /*
 
-
-
-
-
-
-
-
-
-
-
-
-
-#include <cstdio>
-#include <cmath>
-#include <stdlib.h>
-#include <cstring>
-//#include <unistd.h>
-//#include <fftw.h>
-#include <fstream>
-#include <iostream>
-#include <string>
 #include <vector>
 #include <sstream>
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_spline.h>
 #include <gsl/gsl_interp.h>
-#include <algorithm>
-#include <complex>
-#include <fftw3.h>
-
-//#include "init.h"
-using std::vector;
-using namespace std;
-int j;
-extern int cCryst;
-extern int warned;
-extern int nt;
-extern int chirpType;
-extern const double tPi, small, c;
-extern double thdeg, Xcm2;
-extern double *pLambdaj, *iLambdaj, *sLambdaj, *t;
-extern double *absTP;
-extern double pLam1, pLam2, sLam1, sLam2, iLam1, iLam2;
-extern double pLambda_nm, sLambda_nm, iLambda_nm;
-extern double dtps, tlead, dw;
-extern fftw_plan p;
-extern complex<double> ci, c0, c1;
-extern double alps, alpi, alpp, dk, dzcm;
-ifstream ifile("fftplan.dat");
-
-// Function declarations
-int errorhl(int);
-int warninghl(int);
-int openfile(const char,vector<double>*);
-int writeToFile(const char*,double*,double*);
-int writeToFile(const char*,double,double);
-double xeffc(int,int);
-double calcRefInd(int,double,int);
-double deg2rad(double);
-double rad2deg(double);
-double CalcPumCo(double);
-int GenProfile(complex<double>*,int, double,double,double,double,double,double,double,double,double,double);
-double FindMax(double*,int);
-double FindMax(complex<double>*,int); 
-double rInt(double*);
-double cInt(complex<double>*,double);
-complex<double>* noise(complex<double>*,int,int,double);
-int chirper_norm(complex<double>*,int,int,double,double,fftw_plan);
-int fftshift(complex<double>*,int);
-int chirper_direct(complex<double>*,int,double,double);
-int spectrum(complex<double>*,double*,const char*,int);
-double get_FWHM(complex<double>*,double*);
-int OPA(complex<double>*,complex<double>*,complex<double>*,int,int,double,double,double,int,int,int,int,complex<double>*,complex<double>*,complex<double>*);
-int disperse(complex<double>*,double,int,int);
-// not all is here, update list when have time
 
 int errorhl(int h) {
 // This handles error codes.
@@ -296,24 +186,8 @@ int writeToFile(const char *ofname, double *data1, double *data2) {
 	}
 	filestr.close();
 }
-/*=====================================================================*/
-/*
 
 
-
-
-
-
-
-
-
-
-
-/*=====================================================================
-
-/*=====================================================================
-
-/*=====================================================================
 double FindMax(complex<double> *cfield, int s) {
 // Finds maximum of vector 'vek' of size 's'.
 	double maxi=0;
@@ -323,9 +197,7 @@ double FindMax(complex<double> *cfield, int s) {
 	}
 	return maxi;
 }
-/*=====================================================================
 
-/*=====================================================================*
 double cInt(complex<double> *cfield, double fww) {
 // Calculates energy within an intensity profile - given complex field
 	double area=0;
@@ -336,7 +208,7 @@ double cInt(complex<double> *cfield, double fww) {
 //	cout << "area" << area << endl;
 	return area;
 }
-/*=====================================================================*
+
 complex<double>* noise (complex<double> *cva, int profType, int s, double fx) {
 	complex<double> phas;
 	double aj, sumsq=0, factor;
@@ -355,7 +227,7 @@ complex<double>* noise (complex<double> *cva, int profType, int s, double fx) {
 	 // Missing bit:    call fftnr(eva,n2,factor,+1)
 	return cva;
 }
-/*=====================================================================*
+
 int chirper_norm(complex<double> *timeProfile, int profType, int size, double phi2, double phi3, fftw_plan p) {
 // Chirping function - normal chirp
 	complex<double>* spec;
@@ -391,7 +263,7 @@ int chirper_norm(complex<double> *timeProfile, int profType, int size, double ph
 	}
 	fftshift(timeProfile,nt);
 }
-/*=====================================================================*
+
 int chirper_direct(complex<double> *timeProfile, int size, double chp1, double chp2) {
 // This function applies linear (and nonlinear) chirp directly to the complex field
 // in the time domain
@@ -403,17 +275,7 @@ int chirper_direct(complex<double> *timeProfile, int size, double chp1, double c
 		timeProfile[j] = polar(abs(timeProfile[j]), j*j*(par1+par2*j*j));
 	}
 }
-/*=====================================================================*
 
-/*=====================================================================*
-
-/*=====================================================================*
-
-
-
-
-
-/*=====================================================================*/
 //double phaseWrapper(double angInRad) {
 //// Wraps phase between -Pi, Pi
 //	return angInRad+tPi/2-tPi*floor((angInRad+tPi/2)/tPi)-tPi/2;
